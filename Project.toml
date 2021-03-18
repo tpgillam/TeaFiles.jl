@@ -1,0 +1,13 @@
+name = "TeaFiles"
+uuid = "c40ccc24-2f2a-4785-85cd-06e8176bc8e2"
+authors = ["Thomas Gillam <tpgillam@googlemail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.5"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
