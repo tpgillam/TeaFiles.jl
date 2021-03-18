@@ -5,7 +5,7 @@ module Header
 using Bijections
 
 # TODO decide what we actually need to export
-export TeaFileMetadata, Field, ItemSection, TimeSection, ContentSection
+export TeaFileMetadata, Field, ItemSection, TimeSection, ContentDescriptionSection
 export NameValue, NameValueSection
 export kind, section_id
 
@@ -14,6 +14,10 @@ const MAGIC_VALUE = UInt8[0x0d, 0x0e, 0x0a, 0x04, 0x02, 0x08, 0x05, 0x00]
 
 abstract type AbstractSection end
 
+# FIXME for construction method, we should
+#   - add bounds checking to item_start & item_end
+#   - fail if item_start isn't on an 8-byte boundary
+#   - fail if the size of all sections would end up going past item_start
 struct TeaFileMetadata
     item_start::Int64  # Byte-index of the start of the item area.
     item_end::Int64  # Byte-index for the end of the item area, or 0 for EOF.
@@ -75,7 +79,7 @@ struct TimeSection <: AbstractSection
     time_field_offsets::Vector{Int32}
 end
 
-struct ContentSection <: AbstractSection
+struct ContentDescriptionSection <: AbstractSection
     description::String
 end
 
@@ -97,16 +101,16 @@ end
 section_id(::T) where T <: AbstractSection = section_id(T)
 section_id(::Type{ItemSection})::Int32 = 0x0a
 section_id(::Type{TimeSection})::Int32 = 0x40
-section_id(::Type{ContentSection})::Int32 = 0x80
+section_id(::Type{ContentDescriptionSection})::Int32 = 0x80
 section_id(::Type{NameValueSection})::Int32 = 0x81
 
 
 function Base.write(io::IO, metadata::TeaFileMetadata)::Int
     bytes_written = write(io, MAGIC_VALUE)
-    bytes_written += write(io, item_start)
-    bytes_written += write(io, item_end)
+    bytes_written += write(io, metadata.item_start)
+    bytes_written += write(io, metadata.item_end)
     bytes_written += write(io, Int64(length(metadata.sections)))  # section count
-    for section in sections
+    for section in metadata.sections
         bytes_written += write(io, section)
     end
     return bytes_written
@@ -187,7 +191,7 @@ function _write_tea(io::IO, section::TimeSection)::Int
     )
 end
 
-_write_tea(io::IO, section::ContentSection) = _write_tea(io, section.description)
+_write_tea(io::IO, section::ContentDescriptionSection) = _write_tea(io, section.description)
 _write_tea(io::IO, section::NameValueSection) = _write_tea(io, section.name_values)
 
 end  # Header

@@ -1,7 +1,8 @@
 using UUIDs
 
-using TeaFiles.Header: AbstractSection, ContentSection, Field, ItemSection, NameValue,
-    NameValueSection, TimeSection, _tea_size, _write_tea, make_fields, section_id
+using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field,
+    ItemSection, NameValue, NameValueSection, TeaFileMetadata, TimeSection,
+    MAGIC_VALUE, _tea_size, _write_tea, make_fields, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -51,6 +52,43 @@ function _test_section(section::AbstractSection)
     )
 end
 
+function _test_metadata(metadata::TeaFileMetadata)
+    out = IOBuffer()
+    written_bytes = write(out, metadata)
+    @test written_bytes == out.size
+    @test written_bytes == (
+        8 + 8 + 8 + 8 +
+        if isempty(metadata.sections)
+            0
+        else
+            sum(
+                section -> (4 + 4 + _tea_size(section)),
+                metadata.sections
+            )
+        end
+    )
+
+    # Work out the byte array for all sections present
+    sections_bytes = vcat(
+        map(
+            section -> vcat(
+                to_tea_byte_array(section_id(section)),
+                to_tea_byte_array(_tea_size(section)),
+                to_tea_byte_array(section)
+            ),
+            metadata.sections
+        )...
+    )
+
+    @test out.data[1:written_bytes] == vcat(
+        MAGIC_VALUE,
+        to_tea_byte_array(metadata.item_start),
+        to_tea_byte_array(metadata.item_end),
+        to_tea_byte_array(length(metadata.sections)),
+        sections_bytes
+    )
+end
+
 @testset "Header" begin
     @testset "write_field" begin
         field = Field(1, 2, "hi!")
@@ -95,8 +133,8 @@ end
     end
 
     @testset "write_content_section" begin
-        _test_section(ContentSection(""))
-        _test_section(ContentSection("Some non-empty description"))
+        _test_section(ContentDescriptionSection(""))
+        _test_section(ContentDescriptionSection("Some non-empty description"))
     end
 
     @testset "write_name_value_section" begin
@@ -108,5 +146,25 @@ end
             NameValue("c", "coo"),
             NameValue("d", UUIDs.uuid1()),
         ]))
+    end
+
+    @testset "write_tea_file_metadata" begin
+        _test_metadata(TeaFileMetadata(200, 0, []))
+
+        # This is the example in the specification.
+        example_metadata = TeaFileMetadata(200, 0, [
+            ItemSection(
+                "Tick",
+                make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
+            ),
+            ContentDescriptionSection("ACME prices"),
+            NameValueSection([NameValue("decimals", Int32(2))]),
+            TimeSection(719162, 86400000, [0])
+        ])
+        _test_metadata(example_metadata)
+
+        # The spec tells us how many bytes this should be...
+        bytes_written = write(IOBuffer(), example_metadata)
+        @test bytes_written == 194
     end
 end
