@@ -1,4 +1,3 @@
-using TeaFiles
 using Test
 
 @testset "TeaFiles.jl" begin
