@@ -90,60 +90,71 @@ end
 function Base.write(io::IO, section::AbstractSection)::Int
     return (
         write(io, section_id(section)) # section_id
-        + write(io, _size_on_disk(section))  # next_section_offset
-        + _write_section_data(io, section)
+        + write(io, _tea_size(section))  # next_section_offset
+        + _write_tea(io, section)
     )
 end
 
+Base.write(io::IO, name_value::NameValue) = _write_tea(io, name_value)
+Base.write(io::IO, field::Field) = _write_tea(io, field)
+
 """
-Get the size of this section in bytes when written.
+Get the size of this object in bytes when written.
 """
-function _size_on_disk(section::AbstractSection)::Int32
+_tea_size(x::Real) = sizeof(x)
+_tea_size(x::String) = 4 + sizeof(x)
+_tea_size(x::Base.UUID) = sizeof(x)
+function _tea_size(x::AbstractSection)::Int32
     # FIXME be less lazy
     out = IOBuffer()
-    return write(out, section)
+    return _write_tea(out, x)
 end
 
-function Base.write(io::IO, field::Field)::Int
-    return (
-        write(io, field.type_id)
-        + write(io, field.offset)
-        + _write_tea_string(io, field.name)
-    )
-end
+"""Write x in the way that a TeaFile expects."""
+_write_tea(io::IO, x::Real) = write(io, x)
+_write_tea(io::IO, x::Base.UUID) = write(io, x.value)
 
-function Base.write(io::IO, name_value::NameValue)::Int
-    return (
-        _write_tea_string(io, name_value.name)
-        + write(io, kind(name_value))
-        + _write_tea_value(io, name_value.value)
-    )
-end
-
-"""Write a value that could form part of a NameValue."""
-_write_tea_value(io::IO, x) = write(io, x)
-_write_tea_value(io, x::Base.UUID) = write(io, x.value)
-
-"""Write a string prefixed by the length of said string in bytes."""
-function _write_tea_string(io::IO, string::AbstractString)::Int
+function _write_tea(io::IO, string::AbstractString)::Int
     return (
         write(io, Int32(sizeof(string)))
         + write(io, string)
     )
 end
 
-function _write_section_data(io::IO, section::ItemSection)::Int
-    bytes_written = write(io, section.next_section_offset)
-    bytes_written += write(io, section.item_size)
-    bytes_written += _write_tea_string(io, section.item_name)
-    bytes_written += write(io, Int32(length(section.fields)))  # Fields count
-    for field in fields
-        bytes_written += write(io, field)
+function _write_tea(io::IO, xs::Vector{T}) where T
+    # Write the number of items as an int32, followed by the items.
+    bytes_written = write(io, Int32(length(xs)))
+    for x in xs
+        bytes_written += _write_tea(io, field)
     end
     return bytes_written
 end
 
-function _write_section_data(io::IO, section::TimeSection)::Int
+function _write_tea(io::IO, field::Field)::Int
+    return (
+        write(io, field.type_id)
+        + write(io, field.offset)
+        + _write_tea(io, field.name)
+    )
+end
+
+function _write_tea(io::IO, name_value::NameValue)::Int
+    return (
+        _write_tea(io, name_value.name)
+        + write(io, kind(name_value))
+        + _write_tea(io, name_value.value)
+    )
+end
+
+function _write_tea(io::IO, section::ItemSection)::Int
+    bytes_written = write(io, section.next_section_offset)
+    bytes_written += write(io, section.item_size)
+    bytes_written += _write_tea(io, section.item_name)
+    bytes_written += _write_tea(io, section.fields)
+    return bytes_written
+end
+
+function _write_tea(io::IO, section::TimeSection)::Int
     return (
         write(io, section.next_section_offset)
         + write(io, section.epoch)
@@ -153,19 +164,16 @@ function _write_section_data(io::IO, section::TimeSection)::Int
     )
 end
 
-function _write_section_data(io::IO, section::ContentSection)::Int
+function _write_tea(io::IO, section::ContentSection)::Int
     return (
         write(io, section.next_section_offset)
-        + _write_tea_string(io, description)
+        + _write_tea(io, description)
     )
 end
 
-function _write_section_data(io::IO, section::NameValueSection)::Int
+function _write_tea(io::IO, section::NameValueSection)::Int
     bytes_written = write(io, section.next_section_offset)
-    bytes_written += write(io, Int32(length(section.name_values)))
-    for name_value in section.name_values
-        bytes_written += write(io, name_value)
-    end
+    bytes_written = _write_tea(io, section.name_values)
     return bytes_written
 end
 

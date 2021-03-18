@@ -1,29 +1,39 @@
-using TeaFiles.Header: Field, NameValue
+using UUIDs
 
-to_byte_array(x) = reinterpret(UInt8, [x])
+using TeaFiles.Header: Field, NameValue, _tea_size, _write_tea
 
-function _test_name_value(value::Union{Int32, Float64})
-    name_value = NameValue("moo", value)
+to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
+
+function to_tea_byte_array(x)::Vector{UInt8}
+    out = IOBuffer()
+    _write_tea(out, x)
+    return out.data[1:out.size]
+end
+
+function _test_name_value(
+    name::AbstractString,
+    value::Union{Int32, Float64, AbstractString, Base.UUID}
+)
+    name_value = NameValue(name, value)
     out = IOBuffer()
     written_bytes = write(out, name_value)
     @test written_bytes == out.size
-    @test written_bytes == ((4 + 3) + 4 + sizeof(value))
+    @test written_bytes == ((4 + 3) + 4 + _tea_size(value))
 
     kind = if isa(value, Int32)
         Int32(1)
     elseif isa(value, Float64)
         Int32(2)
+    elseif isa(value, AbstractString)
+        Int32(3)
+    elseif isa(value, Base.UUID)
+        Int32(4)
     end
 
     @test out.data[1:written_bytes] == vcat(
-        UInt8[
-            3, 0, 0, 0,  # 3::Int32
-            0x6d,  # m
-            0x6f,  # o
-            0x6f,  # o
-        ],
-        to_byte_array(kind),
-        to_byte_array(value)
+        to_tea_byte_array(name),
+        to_tea_byte_array(kind),
+        to_tea_byte_array(value)
     )
 end
 
@@ -47,19 +57,19 @@ end
 
     @testset "write_name_value" begin
         @testset "int32" begin
-            _test_name_value(Int32(32))
+            _test_name_value("moo", Int32(32))
         end
 
         @testset "float64" begin
-            _test_name_value(42.0)
+            _test_name_value("moo", 42.0)
         end
 
         @testset "string" begin
-            # TODO
+            _test_name_value("moo", "lowing")
         end
 
         @testset "uuid" begin
-            # TODO
+            _test_name_value("moo", UUIDs.uuid1())
         end
     end
 end
