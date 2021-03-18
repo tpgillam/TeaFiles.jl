@@ -1,6 +1,7 @@
 using UUIDs
 
-using TeaFiles.Header: Field, NameValue, _tea_size, _write_tea
+using TeaFiles.Header: AbstractSection, ContentSection, Field, ItemSection, NameValue,
+    NameValueSection, TimeSection, _tea_size, _write_tea, make_fields, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -34,6 +35,19 @@ function _test_name_value(
         to_tea_byte_array(name),
         to_tea_byte_array(kind),
         to_tea_byte_array(value)
+    )
+end
+
+function _test_section(section::AbstractSection)
+    out = IOBuffer()
+    written_bytes = write(out, section)
+    @test written_bytes == out.size
+    @test written_bytes == 4 + 4 + _tea_size(section)
+
+    @test out.data[1:written_bytes] == vcat(
+        to_tea_byte_array(section_id(section)),
+        to_tea_byte_array(_tea_size(section)),
+        to_tea_byte_array(section)
     )
 end
 
@@ -71,5 +85,14 @@ end
         @testset "uuid" begin
             _test_name_value("moo", UUIDs.uuid1())
         end
+    end
+
+    @testset "write_item_section" begin
+        _test_section(ItemSection("", Field[]))
+        _test_section(ItemSection("Plop", make_fields([Float64, Float64, Int32])))
+        _test_section(ItemSection(
+            "Mooo",
+            make_fields(["a" => Float64, "b" => Float64, "c" => Int32])
+        ))
     end
 end
