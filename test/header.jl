@@ -13,7 +13,7 @@ end
 
 function _test_name_value(
     name::AbstractString,
-    value::Union{Int32, Float64, AbstractString, Base.UUID}
+    value::Union{Int32,Float64,AbstractString,Base.UUID}
 )
     name_value = NameValue(name, value)
     out = IOBuffer()
@@ -70,21 +70,10 @@ end
     end
 
     @testset "write_name_value" begin
-        @testset "int32" begin
-            _test_name_value("moo", Int32(32))
-        end
-
-        @testset "float64" begin
-            _test_name_value("moo", 42.0)
-        end
-
-        @testset "string" begin
-            _test_name_value("moo", "lowing")
-        end
-
-        @testset "uuid" begin
-            _test_name_value("moo", UUIDs.uuid1())
-        end
+        @testset "int32" begin _test_name_value("moo", Int32(32)) end
+        @testset "float64" begin _test_name_value("moo", 42.0) end
+        @testset "string" begin _test_name_value("moo", "lowing") end
+        @testset "uuid" begin _test_name_value("moo", UUIDs.uuid1()) end
     end
 
     @testset "write_item_section" begin
@@ -93,6 +82,15 @@ end
         _test_section(ItemSection(
             "Mooo",
             make_fields(["a" => Float64, "b" => Float64, "c" => Int32])
+        ))
+    end
+
+    @testset "write_time_section" begin
+        _test_section(TimeSection(0, 0, Int32[]))
+        _test_section(TimeSection(
+            719162,  # 1970-01-01
+            86400,  # Seconds
+            Int32[0]  # First field
         ))
     end
 end

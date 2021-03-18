@@ -69,9 +69,8 @@ function ItemSection(item_name::AbstractString, fields::AbstractVector{Field})
     return ItemSection(item_size, item_name, fields)
 end
 
-
 struct TimeSection <: AbstractSection
-
+    epoch::Int64  # Number of days from 0000-01-01 to the origin. 719162 for 1970
     ticks_per_day::Int64
     time_field_offsets::Vector{Int32}
 end
