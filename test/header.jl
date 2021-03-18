@@ -93,4 +93,20 @@ end
             Int32[0]  # First field
         ))
     end
+
+    @testset "write_content_section" begin
+        _test_section(ContentSection(""))
+        _test_section(ContentSection("Some non-empty description"))
+    end
+
+    @testset "write_name_value_section" begin
+        _test_section(NameValueSection([]))
+        _test_section(NameValueSection([NameValue("a", Int32(1))]))
+        _test_section(NameValueSection([
+            NameValue("a", Int32(1)),
+            NameValue("b", Float64(42.0)),
+            NameValue("c", "coo"),
+            NameValue("d", UUIDs.uuid1()),
+        ]))
+    end
 end
