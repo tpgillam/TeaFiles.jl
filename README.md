@@ -9,3 +9,5 @@
 Implement the [TeaFile format](http://discretelogics.com/resources/teafilespec/) for binary timeseries data.
 
 **NB: This module is not affiliated with DiscreteLogics**
+
+**NB: This package is not yet functional - WIP :-)**
