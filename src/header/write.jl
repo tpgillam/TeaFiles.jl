@@ -7,6 +7,12 @@ function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
         ))
     end
 
+    if metadata.item_end != 0 && metadata.item_end < metadata.item_start
+        throw(ArgumentError(
+            "Invalid item_end: $(metadata.item_end) is before item_start."
+        ))
+    end
+
     bytes_written = write(io, MAGIC_VALUE)
     bytes_written += write(io, metadata.item_start)
     bytes_written += write(io, metadata.item_end)

@@ -174,5 +174,8 @@ end
 
         # An invalid item_start should trigger an exception.
         @test_throws ArgumentError write(IOBuffer(), TeaFileMetadata(1001, 0, []))
+
+        # An invalid item_end should trigger an exception.
+        @test_throws ArgumentError write(IOBuffer(), TeaFileMetadata(1000, 1, []))
     end
 end

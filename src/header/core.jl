@@ -8,9 +8,6 @@ const MAGIC_VALUE = Int64(0x0d0e0a0402080500)
 abstract type AbstractSection end
 
 # FIXME for construction method, we should
-#   - add bounds checking to item_start & item_end
-#   - fail if item_start isn't on an 8-byte boundary
-#   - fail if the size of all sections would end up going past item_start
 #   - ensure that fields marked as being times are integers?
 @auto_hash_equals struct TeaFileMetadata
     item_start::Int64  # Byte-index of the start of the item area.
