@@ -2,7 +2,7 @@ using UUIDs
 
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field,
     ItemSection, NameValue, NameValueSection, TeaFileMetadata, TimeSection,
-    MAGIC_VALUE, _tea_size, _write_tea, make_fields, section_id
+    FIELD_DATA_TYPE_TO_ID, MAGIC_VALUE, _tea_size, _write_tea, field_type, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -81,12 +81,46 @@ function _test_metadata(metadata::TeaFileMetadata)
     )
 
     @test out.data[1:written_bytes] == vcat(
-        MAGIC_VALUE,
+        to_tea_byte_array(MAGIC_VALUE),
         to_tea_byte_array(metadata.item_start),
         to_tea_byte_array(metadata.item_end),
         to_tea_byte_array(length(metadata.sections)),
         sections_bytes
     )
+end
+
+"""
+Quick-and-dirty field construction. Note that this doesn't properly deal with field
+offsets, which -- if reading a struct -- are likely to have e.g. 8 byte alignment.
+For these tests that doesn't matter though.
+"""
+function _make_fields(name_types::Vector{Pair{String,DataType}})::Vector{Field}
+    offset = Int32(0)
+    result = Field[]
+    for (name, type) in name_types
+        type_id = FIELD_DATA_TYPE_TO_ID[type]
+        push!(result, Field(type_id, offset, name))
+        # BEWARE: this is only suitable for these tests. If mapping a structure then one
+        # should use fieldoffset(T, i) to compute the offset of field i.
+        offset += sizeof(type)
+    end
+    return result
+end
+_make_fields(types::Vector{DataType}) = _make_fields(["" => type for type in types])
+
+"""
+Quick-and-dirty ItemSection construction. If we are mapping a structure of type T, then we
+should instead be making use of sizeof(T).
+"""
+function ItemSection(item_name::AbstractString, fields::AbstractVector{Field})
+    # BEWARE: this is only suitable for these tests. If we are mapping a structure then the
+    #   size on disk could be larger than this due to padding.
+    item_size = if isempty(fields) 0 else
+        sum(fields) do field
+            sizeof(field_type(field))
+        end
+    end
+    return ItemSection(item_size, item_name, fields)
 end
 
 @testset "Header" begin
@@ -116,10 +150,10 @@ end
 
     @testset "write_item_section" begin
         _test_section(ItemSection("", Field[]))
-        _test_section(ItemSection("Plop", make_fields([Float64, Float64, Int32])))
+        _test_section(ItemSection("Plop", _make_fields([Float64, Float64, Int32])))
         _test_section(ItemSection(
             "Mooo",
-            make_fields(["a" => Float64, "b" => Float64, "c" => Int32])
+            _make_fields(["a" => Float64, "b" => Float64, "c" => Int32])
         ))
     end
 
@@ -155,7 +189,7 @@ end
         example_metadata = TeaFileMetadata(200, 0, [
             ItemSection(
                 "Tick",
-                make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
+                _make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
             ),
             ContentDescriptionSection("ACME prices"),
             NameValueSection([NameValue("decimals", Int32(2))]),
