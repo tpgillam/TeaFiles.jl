@@ -82,5 +82,5 @@ function _read_tea(io::IO, ::Type{ContentDescriptionSection})::ContentDescriptio
 end
 
 function _read_tea(io::IO, ::Type{NameValueSection})::NameValueSection
-    return ContentDescriptionSection(_read_tea(io, Vector{NameValue}))
+    return NameValueSection(_read_tea(io, Vector{NameValue}))
 end

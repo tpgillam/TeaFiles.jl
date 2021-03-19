@@ -1,3 +1,4 @@
+using AutoHashEquals
 using Bijections
 
 # This is the identifier with which every tea file must start. It is used to ensure that
@@ -73,7 +74,7 @@ const _NAME_VALUE_TYPE_TO_KIND = Bijection(Dict{DataType, Int32}(
 kind(::NameValue{T}) where T = _NAME_VALUE_TYPE_TO_KIND[T]
 name_value_type(kind::Int32) = inverse(_NAME_VALUE_TYPE_TO_KIND, kind)
 
-struct NameValueSection <: AbstractSection
+@auto_hash_equals struct NameValueSection <: AbstractSection
     name_values::Vector{NameValue}
 end
 

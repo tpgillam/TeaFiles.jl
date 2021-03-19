@@ -54,4 +54,15 @@ end
         _test_rw_loop(ContentDescriptionSection(""))
         _test_rw_loop(ContentDescriptionSection("some description"))
     end
+
+    @testset "read_name_value_section" begin
+        _test_rw_loop(NameValueSection([]))
+        _test_rw_loop(NameValueSection([NameValue("a", Int32(1))]))
+        _test_rw_loop(NameValueSection([
+            NameValue("a", Int32(1)),
+            NameValue("b", Float64(42.0)),
+            NameValue("c", "coo"),
+            NameValue("d", UUIDs.uuid1()),
+        ]))
+    end
 end
