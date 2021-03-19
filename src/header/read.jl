@@ -53,6 +53,13 @@ function _read_tea(io::IO, ::Type{Vector{T}})::Vector{T} where T
     return [_read_tea(io, T) for _ in 1:length]
 end
 
+function _read_tea(io::IO, ::Type{Field})
+    type_id = read(io, Int32)
+    offset = read(io, Int32)
+    name = _read_tea(io, String)
+    return Field(type_id, offset, name)
+end
+
 function _read_tea(io::IO, ::Type{NameValue{T}})::NameValue{T} where T
     name_value = _read_tea(io, NameValue)
     type = typeof(name_value.value)

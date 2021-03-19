@@ -1,5 +1,7 @@
 using Test
 
+include("common.jl")
+
 @testset "TeaFiles.jl" begin
     @testset "Header" begin
         include("header_read.jl")

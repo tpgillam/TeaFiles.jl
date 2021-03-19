@@ -37,6 +37,12 @@ end
         end
     end
 
+    @testset "read_field" begin
+        for field_type_id in 1:10
+            _test_rw_loop(Field(field_type_id, 0, "moo"))
+        end
+    end
+
     @testset "read_name_value" begin
         @testset "int32" begin _test_rw_loop(NameValue("moo", Int32(32))) end
         @testset "float64" begin _test_rw_loop(NameValue("moo", 42.0)) end
