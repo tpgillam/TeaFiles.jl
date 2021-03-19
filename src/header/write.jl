@@ -1,3 +1,4 @@
+"""Write a tea header to the given IO stream."""
 Base.write(io::IO, metadata::TeaFileMetadata) = _write_tea(io, metadata)
 
 function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
