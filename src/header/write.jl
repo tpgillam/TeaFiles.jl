@@ -1,6 +1,12 @@
 Base.write(io::IO, metadata::TeaFileMetadata) = _write_tea(io, metadata)
 
 function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
+    if metadata.item_start % 8 != 0
+        throw(ArgumentError(
+            "Invalid item_start: $(metadata.item_start) is not a multiple of 8."
+        ))
+    end
+
     bytes_written = write(io, MAGIC_VALUE)
     bytes_written += write(io, metadata.item_start)
     bytes_written += write(io, metadata.item_end)
@@ -8,6 +14,12 @@ function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
     for section in metadata.sections
         bytes_written += _write_section(io, section)
     end
+
+    # We now pad this out with zeros to become a multiple of 8 bytes, so that the item area
+    # starts with nice alignment for subsequent memory mapping.
+    n_bytes_padding = metadata.item_start - bytes_written
+    bytes_written += write(io, repeat([0x00], n_bytes_padding))
+
     return bytes_written
 end
 

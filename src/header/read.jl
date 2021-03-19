@@ -14,6 +14,14 @@ function _read_tea(io::IO, ::Type{TeaFileMetadata})::TeaFileMetadata
         push!(sections, _read_section(io))
     end
 
+    pos = position(io)
+    if pos > item_start
+        error("Invalid tea-file, item_start=$item_start is within header.")
+    elseif pos < item_start
+        # Gobble up padding until the start of the item area.
+        seek(io, item_start)
+    end
+
     return TeaFileMetadata(item_start, item_end, sections)
 end
 
@@ -33,14 +41,17 @@ function _read_magic(io::IO)
     end
 end
 
-"""Read a section of the correct type."""
+"""Read a section of the correct type, and return an offset to the next section."""
 function _read_section(io::IO)::AbstractSection
     id = read(io, Int32)
     next_section_offset = read(io, Int32)
-    # TODO use next section offset...
-    # TODO use next section offset...
-    # TODO use next section offset...
-    return _read_tea(io, section_type(id))
+    pos_before = position(io)
+    section = _read_tea(io, section_type(id))
+    pos_after = position(io)
+    # Advance the cursor if required -- this will skip any padding that might exist between
+    # this and the next section.
+    skip(io, next_section_offset - (pos_after - pos_before))
+    return section
 end
 
 """Read a value previously written with _write_tea."""

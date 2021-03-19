@@ -56,19 +56,9 @@ function _test_metadata(metadata::TeaFileMetadata)
     out = IOBuffer()
     written_bytes = write(out, metadata)
     @test written_bytes == out.size
-    @test written_bytes == (
-        8 + 8 + 8 + 8 +
-        if isempty(metadata.sections)
-            0
-        else
-            sum(
-                section -> (4 + 4 + _tea_size(section)),
-                metadata.sections
-            )
-        end
-    )
+    @test written_bytes == metadata.item_start
 
-    # Work out the byte array for all sections present
+    # Work out the byte array for all sections present.
     sections_bytes = vcat(
         map(
             section -> vcat(
@@ -80,12 +70,27 @@ function _test_metadata(metadata::TeaFileMetadata)
         )...
     )
 
+    # Work out the amount of padding that should have been added.
+    unpadded_length = (
+        8 + 8 + 8 + 8 +
+        if isempty(metadata.sections)
+            0
+        else
+            sum(
+                section -> (4 + 4 + _tea_size(section)),
+                metadata.sections
+            )
+        end
+    )
+    padding_bytes = repeat([0x00], metadata.item_start - unpadded_length)
+
     @test out.data[1:written_bytes] == vcat(
         to_tea_byte_array(MAGIC_VALUE),
         to_tea_byte_array(metadata.item_start),
         to_tea_byte_array(metadata.item_end),
         to_tea_byte_array(length(metadata.sections)),
-        sections_bytes
+        sections_bytes,
+        padding_bytes
     )
 end
 
@@ -163,8 +168,11 @@ end
         ])
         _test_metadata(example_metadata)
 
-        # The spec tells us how many bytes this should be...
-        bytes_written = write(IOBuffer(), example_metadata)
-        @test bytes_written == 194
+        # We should pad up to the item_start
+        @test write(IOBuffer(), example_metadata) == 200
+        @test write(IOBuffer(), TeaFileMetadata(1000, 0, [])) == 1000
+
+        # An invalid item_start should trigger an exception.
+        @test_throws ArgumentError write(IOBuffer(), TeaFileMetadata(1001, 0, []))
     end
 end
