@@ -69,18 +69,18 @@ function _write_tea(io::IO, name_value::NameValue)::Int
 end
 
 function _write_tea(io::IO, section::ItemSection)::Int
-    bytes_written = write(io, section.item_size)
-    bytes_written += _write_tea(io, section.item_name)
-    bytes_written += _write_tea(io, section.fields)
-    return bytes_written
+    return (
+        write(io, section.item_size)
+        + _write_tea(io, section.item_name)
+        + _write_tea(io, section.fields)
+    )
 end
 
 function _write_tea(io::IO, section::TimeSection)::Int
     return (
         write(io, section.epoch)
         + write(io, section.ticks_per_day)
-        + write(io, Int32(length(section.time_field_offsets)))  # Time fields count
-        + write(io, section.time_field_offsets)
+        + _write_tea(io, section.time_field_offsets)
     )
 end
 

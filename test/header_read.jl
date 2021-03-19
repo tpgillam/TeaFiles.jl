@@ -50,6 +50,24 @@ end
         @testset "uuid" begin _test_rw_loop(NameValue("moo", UUIDs.uuid1())) end
     end
 
+    @testset "read_item_section" begin
+        _test_rw_loop(ItemSection("", Field[]))
+        _test_rw_loop(ItemSection("Plop", _make_fields([Float64, Float64, Int32])))
+        _test_rw_loop(ItemSection(
+            "Mooo",
+            _make_fields(["a" => Float64, "b" => Float64, "c" => Int32])
+        ))
+    end
+
+    @testset "read_time_section" begin
+        _test_rw_loop(TimeSection(0, 0, Int32[]))
+        _test_rw_loop(TimeSection(
+            719162,  # 1970-01-01
+            86400,  # Seconds
+            Int32[0]  # First field
+        ))
+    end
+
     @testset "read_content_description_section" begin
         _test_rw_loop(ContentDescriptionSection(""))
         _test_rw_loop(ContentDescriptionSection("some description"))

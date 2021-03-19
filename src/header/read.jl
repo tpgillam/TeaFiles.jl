@@ -77,6 +77,20 @@ function _read_tea(io::IO, ::Type{NameValue})::NameValue
     return NameValue(name, value)
 end
 
+function _read_tea(io::IO, ::Type{ItemSection})::ItemSection
+    item_size = read(io, Int32)
+    item_name = _read_tea(io, String)
+    fields = _read_tea(io, Vector{Field})
+    return ItemSection(item_size, item_name, fields)
+end
+
+function _read_tea(io::IO, ::Type{TimeSection})::TimeSection
+    epoch = read(io, Int64)
+    ticks_per_day = read(io, Int64)
+    time_field_offsets = _read_tea(io, Vector{Int32})
+    return TimeSection(epoch, ticks_per_day, time_field_offsets)
+end
+
 function _read_tea(io::IO, ::Type{ContentDescriptionSection})::ContentDescriptionSection
     return ContentDescriptionSection(_read_tea(io, String))
 end

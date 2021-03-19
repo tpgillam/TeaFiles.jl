@@ -43,22 +43,6 @@ end
 
 field_type(field::Field) = inverse(_FIELD_DATA_TYPE_TO_ID, field.type_id)
 
-struct ItemSection <: AbstractSection
-    item_size::Int32  # Size of each item in bytes.
-    item_name::String
-    fields::Vector{Field}
-end
-
-struct TimeSection <: AbstractSection
-    epoch::Int64  # Number of days from 0000-01-01 to the origin. 719162 for 1970
-    ticks_per_day::Int64
-    time_field_offsets::Vector{Int32}
-end
-
-struct ContentDescriptionSection <: AbstractSection
-    description::String
-end
-
 struct NameValue{T <: Union{Int32,Float64,String,Base.UUID}}
     name::String
     value::T
@@ -73,6 +57,22 @@ const _NAME_VALUE_TYPE_TO_KIND = Bijection(Dict{DataType, Int32}(
 
 kind(::NameValue{T}) where T = _NAME_VALUE_TYPE_TO_KIND[T]
 name_value_type(kind::Int32) = inverse(_NAME_VALUE_TYPE_TO_KIND, kind)
+
+@auto_hash_equals struct ItemSection <: AbstractSection
+    item_size::Int32  # Size of each item in bytes.
+    item_name::String
+    fields::Vector{Field}
+end
+
+@auto_hash_equals struct TimeSection <: AbstractSection
+    epoch::Int64  # Number of days from 0000-01-01 to the origin. 719162 for 1970
+    ticks_per_day::Int64
+    time_field_offsets::Vector{Int32}
+end
+
+struct ContentDescriptionSection <: AbstractSection
+    description::String
+end
 
 @auto_hash_equals struct NameValueSection <: AbstractSection
     name_values::Vector{NameValue}

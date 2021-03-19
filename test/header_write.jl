@@ -2,7 +2,7 @@ using UUIDs
 
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field,
     ItemSection, NameValue, NameValueSection, TeaFileMetadata, TimeSection,
-    MAGIC_VALUE, _tea_size, _write_tea, field_type_id, field_type, section_id
+    MAGIC_VALUE, _tea_size, _write_tea, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -87,21 +87,6 @@ function _test_metadata(metadata::TeaFileMetadata)
         to_tea_byte_array(length(metadata.sections)),
         sections_bytes
     )
-end
-
-"""
-Quick-and-dirty ItemSection construction. If we are mapping a structure of type T, then we
-should instead be making use of sizeof(T).
-"""
-function ItemSection(item_name::AbstractString, fields::AbstractVector{Field})
-    # BEWARE: this is only suitable for these tests. If we are mapping a structure then the
-    #   size on disk could be larger than this due to padding.
-    item_size = if isempty(fields) 0 else
-        sum(fields) do field
-            sizeof(field_type(field))
-        end
-    end
-    return ItemSection(item_size, item_name, fields)
 end
 
 @testset "write" begin
