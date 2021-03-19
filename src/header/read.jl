@@ -1,5 +1,8 @@
 """Read a tea header from the given IO stream."""
-function read_header(io::IO)::TeaFileMetadata
+
+Base.read(io::IO, ::Type{TeaFileMetadata}) = _read_tea(io, TeaFileMetadata)
+
+function _read_tea(io::IO, ::Type{TeaFileMetadata})::TeaFileMetadata
     _read_magic(io)
 
     item_start = read(io, Int64)
@@ -11,8 +14,7 @@ function read_header(io::IO)::TeaFileMetadata
         push!(sections, _read_section(io))
     end
 
-
-    return TeaFileMetadata(0, 0, [])
+    return TeaFileMetadata(item_start, item_end, sections)
 end
 
 """Consume the magic value if present, or throw if not."""
@@ -35,6 +37,8 @@ end
 function _read_section(io::IO)::AbstractSection
     id = read(io, Int32)
     next_section_offset = read(io, Int32)
+    # TODO use next section offset...
+    # TODO use next section offset...
     # TODO use next section offset...
     return _read_tea(io, section_type(id))
 end

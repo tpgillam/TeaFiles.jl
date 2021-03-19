@@ -2,7 +2,7 @@ using UUIDs
 
 using TeaFiles.Header: ContentDescriptionSection, Field, ItemSection,
     NameValue, NameValueSection, TeaFileMetadata, TimeSection, MAGIC_VALUE,
-    _read_tea, _write_tea, read_header
+    _read_tea, _write_tea
 
 """
 Write the given value to a buffer, followed by some garbage, and check we read it back
@@ -21,14 +21,14 @@ end
         buf = IOBuffer()
         write(buf, bswap(MAGIC_VALUE))
         seekstart(buf)
-        @test_throws ArgumentError read_header(buf)
+        @test_throws ArgumentError read(buf, TeaFileMetadata)
     end
 
     @testset "read_incorrect_magic" begin
         buf = IOBuffer()
         write(buf, 42)
         seekstart(buf)
-        @test_throws ArgumentError read_header(buf)
+        @test_throws ArgumentError read(buf, TeaFileMetadata)
     end
 
     @testset "read_string" begin
@@ -82,5 +82,19 @@ end
             NameValue("c", "coo"),
             NameValue("d", UUIDs.uuid1()),
         ]))
+    end
+
+    @testset "read_metadata" begin
+        # This is the example in the specification.
+        example_metadata = TeaFileMetadata(200, 0, [
+            ItemSection(
+                "Tick",
+                _make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
+            ),
+            ContentDescriptionSection("ACME prices"),
+            NameValueSection([NameValue("decimals", Int32(2))]),
+            TimeSection(719162, 86400000, [0])
+        ])
+        _test_rw_loop(example_metadata)
     end
 end

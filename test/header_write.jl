@@ -2,7 +2,7 @@ using UUIDs
 
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field,
     ItemSection, NameValue, NameValueSection, TeaFileMetadata, TimeSection,
-    MAGIC_VALUE, _tea_size, _write_tea, section_id
+    MAGIC_VALUE, _tea_size, _write_section, _write_tea, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -18,7 +18,7 @@ function _test_name_value(
 )
     name_value = NameValue(name, value)
     out = IOBuffer()
-    written_bytes = write(out, name_value)
+    written_bytes = _write_tea(out, name_value)
     @test written_bytes == out.size
     @test written_bytes == ((4 + 3) + 4 + _tea_size(value))
 
@@ -41,7 +41,7 @@ end
 
 function _test_section(section::AbstractSection)
     out = IOBuffer()
-    written_bytes = write(out, section)
+    written_bytes = _write_section(out, section)
     @test written_bytes == out.size
     @test written_bytes == 4 + 4 + _tea_size(section)
 
@@ -93,7 +93,7 @@ end
     @testset "write_field" begin
         field = Field(1, 2, "hi!")
         out = IOBuffer()
-        written_bytes = write(out, field)
+        written_bytes = _write_tea(out, field)
         @test written_bytes == out.size
         @test written_bytes == (4 + 4 + (4 + 3))
 

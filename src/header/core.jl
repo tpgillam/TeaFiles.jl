@@ -12,7 +12,7 @@ abstract type AbstractSection end
 #   - fail if item_start isn't on an 8-byte boundary
 #   - fail if the size of all sections would end up going past item_start
 #   - ensure that fields marked as being times are integers?
-struct TeaFileMetadata
+@auto_hash_equals struct TeaFileMetadata
     item_start::Int64  # Byte-index of the start of the item area.
     item_end::Int64  # Byte-index for the end of the item area, or 0 for EOF.
     sections::Vector{AbstractSection}
@@ -86,4 +86,6 @@ const _SECTION_TYPE_TO_ID = Bijection(Dict{DataType, Int32}(
 ))
 
 section_id(::T) where T <: AbstractSection = _SECTION_TYPE_TO_ID[T]
-section_type(id::Int32)::T where T <: AbstractSection = inverse(_SECTION_TYPE_TO_ID, id)
+function section_type(id::Int32)::(Type{T} where T <: AbstractSection)
+    return inverse(_SECTION_TYPE_TO_ID, id)
+end

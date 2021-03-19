@@ -1,24 +1,25 @@
-function Base.write(io::IO, metadata::TeaFileMetadata)::Int
+Base.write(io::IO, metadata::TeaFileMetadata) = _write_tea(io, metadata)
+
+function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
     bytes_written = write(io, MAGIC_VALUE)
     bytes_written += write(io, metadata.item_start)
     bytes_written += write(io, metadata.item_end)
     bytes_written += write(io, Int64(length(metadata.sections)))  # section count
     for section in metadata.sections
-        bytes_written += write(io, section)
+        bytes_written += _write_section(io, section)
     end
     return bytes_written
 end
 
-function Base.write(io::IO, section::AbstractSection)::Int
+# TODO This could just be _write_tea, but for the fact that _tea_size relies on _write_tea
+#   *not* writing the section metadata.
+function _write_section(io::IO, section::AbstractSection)::Int
     return (
         write(io, section_id(section)) # section_id
         + write(io, _tea_size(section))  # next_section_offset
         + _write_tea(io, section)
     )
 end
-
-Base.write(io::IO, name_value::NameValue) = _write_tea(io, name_value)
-Base.write(io::IO, field::Field) = _write_tea(io, field)
 
 """
 Get the size of this object in bytes when written.
