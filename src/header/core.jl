@@ -63,11 +63,15 @@ struct NameValue{T <: Union{Int32,Float64,String,Base.UUID}}
     value::T
 end
 
-kind(::NameValue{T}) where T = kind(T)
-kind(::Type{Int32})::Int32 = 1
-kind(::Type{Float64})::Int32 = 2
-kind(::Type{String})::Int32 = 3
-kind(::Type{Base.UUID})::Int32 = 4
+const _NAME_VALUE_TYPE_TO_KIND = Bijection(Dict{DataType, Int32}(
+    Int32 => 1,
+    Float64 => 2,
+    String => 3,
+    Base.UUID => 4,
+))
+
+kind(::NameValue{T}) where T = _NAME_VALUE_TYPE_TO_KIND[T]
+name_value_type(kind::Int32) = inverse(_NAME_VALUE_TYPE_TO_KIND, kind)
 
 struct NameValueSection <: AbstractSection
     name_values::Vector{NameValue}

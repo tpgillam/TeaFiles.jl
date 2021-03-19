@@ -43,7 +43,7 @@ function _write_tea(io::IO, string::AbstractString)::Int
     )
 end
 
-function _write_tea(io::IO, xs::Vector{T}) where T
+function _write_tea(io::IO, xs::Vector)
     # Write the number of items as an int32, followed by the items.
     bytes_written = write(io, Int32(length(xs)))
     for x in xs
