@@ -2,7 +2,7 @@ using UUIDs
 
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field,
     ItemSection, NameValue, NameValueSection, TeaFileMetadata, TimeSection,
-    FIELD_DATA_TYPE_TO_ID, MAGIC_VALUE, _tea_size, _write_tea, field_type, section_id
+    MAGIC_VALUE, _tea_size, _write_tea, field_type_id, field_type, section_id
 
 to_tea_byte_array(x::Real) = reinterpret(UInt8, [x])
 
@@ -98,7 +98,7 @@ function _make_fields(name_types::Vector{Pair{String,DataType}})::Vector{Field}
     offset = Int32(0)
     result = Field[]
     for (name, type) in name_types
-        type_id = FIELD_DATA_TYPE_TO_ID[type]
+        type_id = field_type_id(type)
         push!(result, Field(type_id, offset, name))
         # BEWARE: this is only suitable for these tests. If mapping a structure then one
         # should use fieldoffset(T, i) to compute the offset of field i.
@@ -123,7 +123,7 @@ function ItemSection(item_name::AbstractString, fields::AbstractVector{Field})
     return ItemSection(item_size, item_name, fields)
 end
 
-@testset "Header" begin
+@testset "write" begin
     @testset "write_field" begin
         field = Field(1, 2, "hi!")
         out = IOBuffer()
@@ -166,7 +166,7 @@ end
         ))
     end
 
-    @testset "write_content_section" begin
+    @testset "write_content_description_section" begin
         _test_section(ContentDescriptionSection(""))
         _test_section(ContentDescriptionSection("Some non-empty description"))
     end

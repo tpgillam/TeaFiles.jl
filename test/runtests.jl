@@ -1,5 +1,8 @@
 using Test
 
 @testset "TeaFiles.jl" begin
-    include("header.jl")
+    @testset "Header" begin
+        include("header_read.jl")
+        include("header_write.jl")
+    end
 end

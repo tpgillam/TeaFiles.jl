@@ -17,7 +17,7 @@ struct TeaFileMetadata
     sections::Vector{AbstractSection}
 end
 
-const FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
+const _FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
     Int8 => 1,
     Int16 => 2,
     Int32 => 3,
@@ -32,13 +32,15 @@ const FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
     # User-defined types must have identifiers at or above 0x1000
 ))
 
+field_type_id(T::Type) = _FIELD_DATA_TYPE_TO_ID[T]
+
 struct Field
     type_id::Int32
     offset::Int32  # Byte offset inside the item
     name::String
 end
 
-field_type(field::Field) = inverse(FIELD_DATA_TYPE_TO_ID, field.type_id)
+field_type(field::Field) = inverse(_FIELD_DATA_TYPE_TO_ID, field.type_id)
 
 struct ItemSection <: AbstractSection
     item_size::Int32  # Size of each item in bytes.
@@ -71,8 +73,12 @@ struct NameValueSection <: AbstractSection
     name_values::Vector{NameValue}
 end
 
-section_id(::T) where T <: AbstractSection = section_id(T)
-section_id(::Type{ItemSection})::Int32 = 0x0a
-section_id(::Type{TimeSection})::Int32 = 0x40
-section_id(::Type{ContentDescriptionSection})::Int32 = 0x80
-section_id(::Type{NameValueSection})::Int32 = 0x81
+const _SECTION_TYPE_TO_ID = Bijection(Dict{DataType, Int32}(
+    ItemSection => 0x0a,
+    TimeSection => 0x40,
+    ContentDescriptionSection => 0x80,
+    NameValueSection => 0x81,
+))
+
+section_id(::T) where T <: AbstractSection = _SECTION_TYPE_TO_ID[T]
+section_type(id::Int32)::T where T <: AbstractSection = inverse(_SECTION_TYPE_TO_ID, id)
