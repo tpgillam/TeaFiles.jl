@@ -7,8 +7,6 @@ const MAGIC_VALUE = Int64(0x0d0e0a0402080500)
 
 abstract type AbstractSection end
 
-# FIXME for construction method, we should
-#   - ensure that fields marked as being times are integers?
 @auto_hash_equals struct TeaFileMetadata
     item_start::Int64  # Byte-index of the start of the item area.
     item_end::Int64  # Byte-index for the end of the item area, or 0 for EOF.
