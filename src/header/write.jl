@@ -2,17 +2,7 @@
 Base.write(io::IO, metadata::TeaFileMetadata) = _write_tea(io, metadata)
 
 function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
-    if metadata.item_start % 8 != 0
-        throw(ArgumentError(
-            "Invalid item_start: $(metadata.item_start) is not a multiple of 8."
-        ))
-    end
-
-    if metadata.item_end != 0 && metadata.item_end < metadata.item_start
-        throw(ArgumentError(
-            "Invalid item_end: $(metadata.item_end) is before item_start."
-        ))
-    end
+    verify_metadata(metadata)
 
     bytes_written = write(io, MAGIC_VALUE)
     bytes_written += write(io, metadata.item_start)

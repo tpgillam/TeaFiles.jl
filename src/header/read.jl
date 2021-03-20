@@ -21,7 +21,9 @@ function _read_tea(io::IO, ::Type{TeaFileMetadata})::TeaFileMetadata
         seek(io, item_start)
     end
 
-    return TeaFileMetadata(item_start, item_end, sections)
+    metadata = TeaFileMetadata(item_start, item_end, sections)
+    verify_metadata(metadata)
+    return metadata
 end
 
 """Consume the magic value if present, or throw if not."""

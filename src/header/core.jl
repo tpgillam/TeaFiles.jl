@@ -1,5 +1,6 @@
-using AutoHashEquals
-using Bijections
+using AutoHashEquals: @auto_hash_equals
+using Bijections: Bijection, inverse
+using DataStructures: DefaultDict
 
 # This is the identifier with which every tea file must start. It is used to ensure that
 # the file is a valid tea-file, and also that the endianness matches.
@@ -11,6 +12,36 @@ abstract type AbstractSection end
     item_start::Int64  # Byte-index of the start of the item area.
     item_end::Int64  # Byte-index for the end of the item area, or 0 for EOF.
     sections::Vector{AbstractSection}
+end
+
+"""Throw if `metadata` is invalid."""
+function verify_metadata(metadata::TeaFileMetadata)::Nothing
+    if metadata.item_start % 8 != 0
+        throw(ArgumentError(
+            "Invalid item_start: $(metadata.item_start) is not a multiple of 8."
+        ))
+    end
+
+    if metadata.item_end != 0 && metadata.item_end < metadata.item_start
+        throw(ArgumentError(
+            "Invalid item_end: $(metadata.item_end) is before item_start."
+        ))
+    end
+
+    # We should have at most one section of any type.
+    type_to_count = DefaultDict{Type, Int}(0)
+    for section in metadata.sections
+        type_to_count[typeof(section)] += 1
+    end
+    for (type, count) in type_to_count
+        if count > 1
+            throw(ArgumentError(
+                "Found $count sections of type $type -- there should be at most one."
+            ))
+        end
+    end
+
+    return nothing
 end
 
 const _FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
