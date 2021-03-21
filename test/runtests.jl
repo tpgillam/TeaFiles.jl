@@ -7,4 +7,7 @@ include("common.jl")
         include("header_read.jl")
         include("header_write.jl")
     end
+    @testset "Body" begin
+        include("body_read.jl")
+    end
 end
