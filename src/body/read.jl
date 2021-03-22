@@ -27,7 +27,7 @@ end
 # https://docs.julialang.org/en/v1/manual/interfaces/#Indexing
 Base.size(block::ItemIOBlock) = div(block.item_end - block.item_start, block.item_size)
 function Base.getindex(block::ItemIOBlock{Time}, i::Int)::Time where Time
-    seek(block.io, block.item_start + i * block.item_size + block.time_field_offset)
+    seek(block.io, block.item_start + (i - 1) * block.item_size + block.time_field_offset)
     return read(block.io, Time)
 end
 Base.IndexStyle(::Type{ItemIOBlock}) = IndexLinear()
@@ -52,10 +52,14 @@ function seek_to_time(
 
     # TODO use searchsortedfirst?
     #   https://github.com/JuliaLang/julia/blob/6913f9ccb156230f54830c8b7b8ef82b41cac27e/base/sort.jl#L178
-    block = ItemIOBlock{typeof(time)}(io, item_start, item_end, item_size, time_field_offset)
-    index = searchsortedfirst(block, time)
+    block = ItemIOBlock{typeof(time)}(
+        io, item_start, item_end, item_size, time_field_offset
+    )
+    # TODO Why doesn't the following work?
+    # index = searchsortedfirst(block, time)
+    index = searchsortedfirst(block, time, 1, length(block), Base.Order.ForwardOrdering())
 
-    seek(io, item_start + index * item_size)
+    seek(io, item_start + (index - 1) * item_size)
     # TODO This isn't the fastest possible implementation, since it will potentially do up
     # to two (?) more seeks than strictly necessary.
     return io
