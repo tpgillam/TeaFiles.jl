@@ -157,15 +157,7 @@ end
         _test_metadata(TeaFileMetadata(200, 0, []))
 
         # This is the example in the specification.
-        example_metadata = TeaFileMetadata(200, 0, [
-            ItemSection(
-                "Tick",
-                _make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
-            ),
-            ContentDescriptionSection("ACME prices"),
-            NameValueSection([NameValue("decimals", Int32(2))]),
-            TimeSection(719162, 86400000, [0])
-        ])
+        example_metadata = _get_example_metadata()
         _test_metadata(example_metadata)
 
         # We should pad up to the item_start

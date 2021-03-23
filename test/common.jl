@@ -1,5 +1,6 @@
 using TeaFiles
-using TeaFiles.Header: Field, field_type, field_type_id
+using TeaFiles.Header: ContentDescriptionSection, Field, ItemSection, NameValue,
+    NameValueSection, TeaFileMetadata, TimeSection, field_type, field_type_id
 
 """
 Quick-and-dirty field construction. Note that this doesn't properly deal with field
@@ -36,4 +37,19 @@ function TeaFiles.Header.ItemSection(
         end
     end
     return ItemSection(item_size, item_name, fields)
+end
+
+"""
+Get a metadata section for the example used in the specification.
+"""
+function _get_example_metadata()::TeaFileMetadata
+    return TeaFileMetadata(200, 0, [
+        ItemSection(
+            "Tick",
+            _make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
+        ),
+        ContentDescriptionSection("ACME prices"),
+        NameValueSection([NameValue("decimals", Int32(2))]),
+        TimeSection(719162, 86400000, [0])
+    ])
 end

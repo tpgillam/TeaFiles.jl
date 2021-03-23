@@ -4,6 +4,7 @@ include("common.jl")
 
 @testset "TeaFiles.jl" begin
     @testset "Header" begin
+        include("header_core.jl")
         include("header_read.jl")
         include("header_write.jl")
     end

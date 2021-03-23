@@ -41,6 +41,8 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
         end
     end
 
+    # TODO Verify that time field offsets match up to known fields.
+
     return nothing
 end
 
@@ -115,3 +117,36 @@ section_id(::T) where T <: AbstractSection = _SECTION_TYPE_TO_ID[T]
 function section_type(id::Int32)::(Type{T} where T <: AbstractSection)
     return inverse(_SECTION_TYPE_TO_ID, id)
 end
+
+"""Get a section of the specified type."""
+function get_section(metadata::TeaFileMetadata, type::Type)
+    return only(filter(section -> isa(section, type), metadata.sections))
+end
+
+"""
+Get all Field instances which are marked as representing times in the metadata.
+"""
+function get_time_fields(metadata::TeaFileMetadata)::Vector{Field}
+    # There should never be more than one time section, and this will throw if there is not
+    # a time section. Same for the item section.
+    time_section = get_section(metadata, TimeSection)
+    item_section = get_section(metadata, ItemSection)
+
+    result = Field[]
+    field, iter_field_state = iterate(item_section.fields)
+    for time_field_offset in time_section.time_field_offsets
+        while time_field_offset > field.offset
+            field, field_state = iterate(item_section.fields, iter_field_state)
+        end
+        if field.offset != time_field_offset
+            throw(ArgumentError("Inconsistent metadata; could not find time field."))
+        end
+
+        push!(result, field)
+    end
+
+    return result
+end
+
+"""Get the time field which is the primary index for the tea file."""
+get_primary_time_field(metadata::TeaFileMetadata) = first(get_time_fields(metadata))
