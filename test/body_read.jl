@@ -47,5 +47,45 @@ using TeaFiles.Body: seek_to_time
             test_seek(50, 6)  # End-of-file at this point
             test_seek(60, 6)
         end
+
+        @testset "read example" begin
+            metadata = _get_example_metadata()
+
+            """This is the structure the metadata expects."""
+            struct Tick
+                Time::Int64
+                Price::Float64
+                Volume::Int64
+            end
+
+            buf = IOBuffer()
+            metadata_size = write(buf, metadata)
+            written_bytes = write(
+                buf,
+                [
+                    Tick(10, 12.0, 1),
+                    Tick(20, 22.0, 2),
+                    Tick(30, 32.0, 3),
+                    Tick(40, 42.0, 4),
+                    Tick(50, 52.0, 5),
+                ]
+            )
+            @test written_bytes == 5 * sizeof(Tick)
+
+            function test_seek(time::Int64, expected_index::Int)
+                seek_to_time(buf, metadata, time)
+                expected_position = metadata_size + (expected_index - 1) * sizeof(Tick)
+                @test position(buf) == expected_position
+            end
+
+            test_seek(0, 1)  # This time is before any data that we have
+            test_seek(10, 1)
+            test_seek(20, 2)
+            test_seek(30, 3)
+            test_seek(40, 4)
+            test_seek(50, 5)
+            test_seek(60, 6)  # End-of-file at this point
+            test_seek(70, 6)
+        end
     end
 end
