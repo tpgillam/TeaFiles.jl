@@ -60,7 +60,7 @@ function create_metadata(
     ]
 
     sections = [
-        ItemSection(sizeof(item_type), string(item_type.name), fields),
+        ItemSection(sizeof(item_type), string(item_type.name.name), fields),
         ContentDescriptionSection(content_description),
         NameValueSection(name_values),
         TimeSection(epoch, ticks_per_day, time_field_offsets)
