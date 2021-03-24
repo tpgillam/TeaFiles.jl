@@ -46,10 +46,17 @@ function _get_example_metadata()::TeaFileMetadata
     return TeaFileMetadata(200, 0, [
         ItemSection(
             "Tick",
-            _make_fields(["Time" => Int64, "Price" => Float64, "Volume" => Int64])
+            _make_fields(["time" => Int64, "price" => Float64, "volume" => Int64])
         ),
         ContentDescriptionSection("ACME prices"),
         NameValueSection([NameValue("decimals", Int32(2))]),
         TimeSection(719162, 86400000, [0])
     ])
+end
+
+"""This is the structure the metadata expects."""
+struct Tick
+    time::Int64
+    price::Float64
+    volume::Int64
 end

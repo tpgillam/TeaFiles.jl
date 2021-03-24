@@ -51,13 +51,6 @@ using TeaFiles.Body: seek_to_time
         @testset "read example" begin
             metadata = _get_example_metadata()
 
-            """This is the structure the metadata expects."""
-            struct Tick
-                Time::Int64
-                Price::Float64
-                Volume::Int64
-            end
-
             buf = IOBuffer()
             metadata_size = write(buf, metadata)
             written_bytes = write(
