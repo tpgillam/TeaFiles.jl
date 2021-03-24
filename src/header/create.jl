@@ -7,7 +7,7 @@ const Duration = Union{TimePeriod, Day}
 function _duration_div(x::Duration, y::T) where {T <: Duration}
     value, remainder = divrem(convert(T, x).value, y.value)
     if remainder != 0
-        error("$y % $x != 0, division not defined.")
+        throw(ArgumentError("$y % $x != 0, division not defined."))
     end
     return value
 end
