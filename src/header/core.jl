@@ -42,6 +42,7 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
     end
 
     # TODO Verify that time field offsets match up to known fields.
+    # TODO Verify that item_start is large enough to be after the whole metadata section.
 
     return nothing
 end
@@ -93,7 +94,7 @@ name_value_type(kind::Int32) = inverse(_NAME_VALUE_TYPE_TO_KIND, kind)
 end
 
 @auto_hash_equals struct TimeSection <: AbstractSection
-    epoch::Int64  # Number of days from 0000-01-01 to the origin. 719162 for 1970
+    epoch::Int64  # Number of days from 0001-01-01 to the origin.
     ticks_per_day::Int64
     time_field_offsets::Vector{Int32}
 end
