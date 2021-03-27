@@ -11,3 +11,8 @@ Implement the [TeaFile format](http://discretelogics.com/resources/teafilespec/)
 **NB: This module is not affiliated with DiscreteLogics**
 
 **NB: This package is not yet functional - WIP :-)**
+
+## Notes
+
+* We define the epoch relative to 0001-01-01. 
+The spec states that the reference is actually 0000-01-01, however the example given, and Python & .NET implementations by DiscreteLogics, assume a reference of 0001-01-01. 
