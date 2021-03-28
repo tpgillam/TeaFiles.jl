@@ -15,4 +15,7 @@ Implement the [TeaFile format](http://discretelogics.com/resources/teafilespec/)
 ## Notes
 
 * We define the epoch relative to 0001-01-01. 
-The spec states that the reference is actually 0000-01-01, however the example given, and Python & .NET implementations by DiscreteLogics, assume a reference of 0001-01-01. 
+The specification states that the reference is 0000-01-01, however this seems to be an error. 
+The example given within the spec, and Python & .NET implementations by DiscreteLogics, are consistent with a reference of 0001-01-01. 
+* The specification makes no mention of time zones, and therefore work with naive `DateTime` objects in Julia.
+Users are recommended to store times in UTC to avoid ambiguities around DST changepoints.
