@@ -11,4 +11,9 @@ module Body
 include("body/read.jl")
 end  # Body
 
+using .Body: get_num_items
+using .Header: TeaFileMetadata, create_metadata
+
+export TeaFileMetadata, create_metadata, get_num_items
+
 end  # TeaFiles

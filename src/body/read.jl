@@ -20,11 +20,30 @@ Base.IndexStyle(::Type{ItemIOBlock}) = IndexLinear()
 """
 Get the position of the end of the given `io`.
 
-Note that this will seek to the end of `io` in the process.
+Note that this may seek to the end of `io` in the process.
 """
-function _get_eof_position(io::IO)::Int64
+function _filesize(io::IO)::Int64
     seekend(io)
     return position(io)
+end
+_filesize(io::IOBuffer) = io.size
+_filesize(io::IOStream) = filesize(io)
+
+"""Get the number of items in the given stream."""
+function get_num_items(io::IO, metadata::TeaFileMetadata)::Int64
+    item_end = metadata.item_end == 0 ? _filesize(io) : metadata.item_end
+    return get_num_items(item_end - metadata.item_start, metadata)
+end
+
+function get_num_items(item_block_size::Integer, metadata::TeaFileMetadata)::Int64
+    item_size = get_section(metadata, ItemSection).item_size
+    num_items, remainder = divrem(item_block_size, item_size)
+    if remainder != 0
+        throw(ArgumentError(
+            "item_size $item_size doesn't divide block size $item_block_size"
+        ))
+    end
+    return num_items
 end
 
 """
@@ -50,7 +69,7 @@ function seek_to_time(io::IO, metadata::TeaFileMetadata, time::T) where T <: Rea
     return seek_to_time(
         io,
         metadata.item_start,
-        metadata.item_end == 0 ? _get_eof_position(io) : metadata.item_end,
+        metadata.item_end == 0 ? _filesize(io) : metadata.item_end,
         item_section.item_size,
         time_field.offset,
         time

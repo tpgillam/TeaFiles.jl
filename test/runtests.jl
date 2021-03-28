@@ -12,4 +12,7 @@ include("common.jl")
     @testset "Body" begin
         include("body_read.jl")
     end
+    @testset "Example" begin
+        include("example.jl")
+    end
 end
