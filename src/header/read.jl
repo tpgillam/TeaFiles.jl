@@ -1,4 +1,9 @@
-"""Read a tea header from the given IO stream."""
+"""
+Read a tea header from the given IO stream.
+
+`io` will be at the start of the item area following this function call, which could be
+the end of the file.
+"""
 Base.read(io::IO, ::Type{TeaFileMetadata}) = _read_tea(io, TeaFileMetadata)
 
 function _read_tea(io::IO, ::Type{TeaFileMetadata})::TeaFileMetadata
