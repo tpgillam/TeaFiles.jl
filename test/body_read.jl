@@ -150,6 +150,14 @@ end
         @test read_items(Tick, buf, metadata; lower=10, upper=40) == expected_items[1:3]
         @test read_items(Tick, buf, metadata; lower=40, upper=41) == expected_items[4:4]
         @test read_items(Tick, buf, metadata; lower=41, upper=42) == Tick[]
+
+        # Verify that an incompatible item type results in an error.
+        struct IncompatibleTick
+            time::Int64
+            price::Float32  # In `Tick`, this is a Float64
+            volume::Int64
+        end
+        @test_throws ArgumentError read_items(IncompatibleTick, buf, metadata)
     end
 
     @testset "read_columns" begin
