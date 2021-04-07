@@ -114,8 +114,8 @@ const _SECTION_TYPE_TO_ID = Bijection(Dict{DataType, Int32}(
     NameValueSection => 0x81,
 ))
 
-section_id(::T) where T <: AbstractSection = _SECTION_TYPE_TO_ID[T]
-function section_type(id::Int32)::(Type{T} where T <: AbstractSection)
+section_id(::T) where {T <: AbstractSection} = _SECTION_TYPE_TO_ID[T]
+function section_type(id::Int32)::(Type{T} where {T <: AbstractSection})
     return inverse(_SECTION_TYPE_TO_ID, id)
 end
 
@@ -151,3 +151,36 @@ end
 
 """Get the time field which is the primary index for the tea file."""
 get_primary_time_field(metadata::TeaFileMetadata) = first(get_time_fields(metadata))
+
+"""
+Return true iff the specified `Item` has a compatible memory layout with that specified
+in `item_section`.
+
+Note that we *do not* inspect field names, just types and offsets.
+"""
+function is_item_compatible(Item::Type, item_section::ItemSection)::Bool
+    if !isbitstype(Item)
+        # Only types with a well defined layout in memory can be compatible.
+        return false
+    end
+
+    if sizeof(Item) != item_section.item_size
+        return false
+    end
+
+    if fieldcount(Item) != length(item_section.fields)
+        return false
+    end
+
+    for i in 1:fieldcount(Item)
+        field = item_section.fields[i]
+        if field_type(field) != fieldtype(Item, i)
+            return false
+        end
+        if field.offset != fieldoffset(Item, i)
+            return false
+        end
+    end
+
+    return true
+end

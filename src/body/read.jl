@@ -1,7 +1,7 @@
 using ArgCheck
 
 using TeaFiles.Header: ItemSection, TeaFileMetadata, field_type,
-    get_primary_time_field, get_section
+    get_primary_time_field, get_section, is_item_compatible
 
 """Wrapper around an IO block, on which indexing gets a particular field."""
 mutable struct ItemIOBlock{T <: Real} <: AbstractVector{T}
@@ -149,11 +149,10 @@ function read_items(
 
     # Allocate output; we know the number of items that we're about to read ahead of time.
     item_section = get_section(metadata, ItemSection)
+    @argcheck is_item_compatible(Item, item_section)
     num_items, remainder = divrem(item_end - item_start, item_section.item_size)
     if remainder != 0 error("Got remainder $remainder, should be zero.") end
     output = Vector{Item}(undef, num_items)
-
-    # TODO We should add a check that `Item` is compatible with item_section.
 
     seek(io, item_start)
     GC.@preserve output begin
