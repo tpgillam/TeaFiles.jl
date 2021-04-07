@@ -1,8 +1,10 @@
+using ArgCheck
+
 using TeaFiles.Header: ItemSection, TeaFileMetadata, field_type,
     get_primary_time_field, get_section
 
-"""Wrapper around an IO block, on which indexing gets the time field."""
-struct ItemIOBlock{Time <: Real} <: AbstractVector{Time}
+"""Wrapper around an IO block, on which indexing gets a particular field."""
+mutable struct ItemIOBlock{T <: Real} <: AbstractVector{T}
     io::IO
     item_start::Int64
     item_end::Int64
@@ -11,11 +13,30 @@ struct ItemIOBlock{Time <: Real} <: AbstractVector{Time}
 end
 
 Base.size(block::ItemIOBlock) = (div(block.item_end - block.item_start, block.item_size),)
-function Base.getindex(block::ItemIOBlock{Time}, i::Int)::Time where Time
+function Base.getindex(block::ItemIOBlock{T}, i::Int)::T where T
     seek(block.io, block.item_start + (i - 1) * block.item_size + block.time_field_offset)
-    return read(block.io, Time)
+    return read(block.io, T)
 end
 Base.IndexStyle(::Type{ItemIOBlock}) = IndexLinear()
+
+"""Get an `ItemIOBlock` for the primary time field."""
+function _get_primary_time_field_block(io::IO, metadata::TeaFileMetadata)::ItemIOBlock
+    time_field = get_primary_time_field(metadata)
+    item_section = get_section(metadata, ItemSection)
+
+    time_type = field_type(time_field)
+
+    # TODO Check that (item_end - item_start) % item_size == 0?
+    # TODO Check that time_field_offset + sizeof(T) <= item_size
+
+    return ItemIOBlock{time_type}(
+        io,
+        metadata.item_start,
+        metadata.item_end == 0 ? _filesize(io) : metadata.item_end,
+        item_section.item_size,
+        time_field.offset
+    )
+end
 
 """
 Get the position of the end of the given `io`.
@@ -47,53 +68,144 @@ function get_num_items(item_block_size::Integer, metadata::TeaFileMetadata)::Int
 end
 
 """
-Seek `io` to the start of the first item at or after `time`.
+Get the position in `io` of the first item with time `time`.
 
-Note that this operation will throw if `metadata` does not include a time section, or if
-said section does not define a time field.
-
-We use a binary search in the range `item_start` <= i < `item_end`, since items must be
-ordered by non-decreasing time. We will seek to `item_end` if `time` is after the final
-entry in the stream.
+We use a binary search in the range `block.item_start` <= i < `block.item_end`, since
+items must be ordered by non-decreasing time. Will return `block.item_end` when `time` is
+after all items present.
 """
-function seek_to_time(io::IO, metadata::TeaFileMetadata, time::T) where T <: Real
-    time_field = get_primary_time_field(metadata)
-    item_section = get_section(metadata, ItemSection)
-
-    if (T != field_type(time_field))
-        throw(ArgumentError(
-            "Specified time is of type $T, but was expecting a $(field_type(time_field))"
-        ))
-    end
-
-    return seek_to_time(
-        io,
-        metadata.item_start,
-        metadata.item_end == 0 ? _filesize(io) : metadata.item_end,
-        item_section.item_size,
-        time_field.offset,
-        time
-    )
+function _first_position_ge_time(
+    block::ItemIOBlock{Time},
+    time::Time
+)::Int64 where Time <: Real
+    index = searchsortedfirst(block, time)
+    return block.item_start + (index - 1) * block.item_size
 end
 
-function seek_to_time(
+# """
+# Read items from `io`, returning a vector of instances of the appropriate type.
+
+# We provide the option of reading a specified closed-open time interval of such items.
+
+# # Arguments
+# - `::Type{Item}`: The type `Item` to be read -- should be a bits type.
+# - `io::IO`: The IO instance from which to read.
+
+# # Keywords
+# - `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
+# - `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
+# """
+# function read_items(
+#     ::Type{Item}
+#     io::IO,
+#     metadata::TeaFileMetadata;
+#     lower::Union[Nothing, Time]=nothing,
+#     upper::Union[Nothing, Time]=nothing
+# )::Vector{Item} where {Item, Time <: Real}
+#     # TODO
+#     # TODO
+#     # TODO
+# end
+
+"""
+Read columns from `io`, returning a vector of vectors, one per column.
+
+We provide the option of reading a specified closed-open time interval of such items.
+
+# Arguments
+- `::Type{Item}`: The type `Item` to be read -- should be a bits type.
+- `io::IO`: The IO instance from which to read.
+
+# Keywords
+- `columns::Union[Nothing, AbstractVector{Int64}]=nothing`: If specified,
+    only read columns with the given indices
+- `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
+- `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
+"""
+function read_columns(
     io::IO,
-    item_start::Int64,
-    item_end::Int64,
-    item_size::Int32,
-    time_field_offset::Int32,
-    time::Time
-)::IO where Time <: Real
-    # TODO Check that (item_end - item_start) % item_size == 0?
-    # TODO Check that time_field_offset + sizeof(T) <= item_size
+    metadata::TeaFileMetadata;
+    columns::Union{Nothing, AbstractVector{Int64}}=nothing,
+    lower::Union{Nothing, Time}=nothing,
+    upper::Union{Nothing, Time}=nothing
+)::Vector{Vector} where {Time <: Real}
+    if !isnothing(lower) && !isnothing(upper)
+        @argcheck lower < upper
+    end
 
-    block = ItemIOBlock{typeof(time)}(
-        io, item_start, item_end, item_size, time_field_offset
+    item_section = get_section(metadata, ItemSection)
+
+    fields = if isnothing(columns)
+        # Default to all indices.
+        item_section.fields
+    else
+        [field for (i, field) in enumerate(item_section.fields) if i in columns]
+    end
+
+    offsets = [field.offset for field in fields]
+    @argcheck sort(offsets) == offsets ArgumentError(
+        "Columns should be requested in the order in which they appear in the file."
     )
-    index = searchsortedfirst(block, time)
 
-    seek(io, item_start + (index - 1) * item_size)
-    # TODO This isn't the fastest possible implementation, since it will potentially do up
-    # to two (?) more seeks than strictly necessary.
-    return io
+    time_block = _get_primary_time_field_block(io, metadata)
+
+    # Where we should start reading the file.
+    item_start = if !isnothing(lower)
+        # Position at start of first item we would like to read.
+        position = _first_position_ge_time(time_block, lower)
+
+        # Re-define the time block to start from the lower bound. This will make it more
+        # efficient to find the upper bound if specified.
+        time_block.item_start = position
+
+        position
+    else
+        time_block.item_start
+    end
+
+    # Where we should end reading the file.
+    item_end = if !isnothing(upper)
+        # This is the position of the first time >= the upper bound; this corresponds to the
+        # end position.
+        _first_position_ge_time(time_block, upper)
+    else
+        time_block.item_end
+    end
+
+    # Allocate outputs; we know the number of items that we're about to read ahead of time.
+    num_items, remainder = divrem(item_end - item_start, item_section.item_size)
+    if remainder != 0 error("Got remainder $remainder, should be zero.") end
+    output_vectors = [Vector{field_type(field)}(undef, num_items) for field in fields]
+
+
+    # Read the items.
+
+    # We always keep track of the position of the read head relative to the start of the
+    # item that we are currently reading.
+    current_offset = 0
+
+    seek(io, item_start)
+    for i_item in 1:num_items
+        for (i_field, field) in enumerate(fields)
+            if current_offset > field.offset
+                # Note that, at this point, it is guaranteed that the fields appear in
+                # order of increasing offset, so we never have to seek backwards. We will
+                # therefore get here when we have moved onto a new item; we therefore reset
+                # the current offset relative to the start of the new item.
+                current_offset -= item_section.item_size
+            end
+
+            if current_offset != field.offset
+                # We need to skip forward
+                skip(io, field.offset - current_offset)
+                current_offset = field.offset
+            end
+
+            type_ = field_type(field)
+            output_vectors[i_field][i_item] = read(io, type_)
+            current_offset += sizeof(type_)
+        end
+    end
+
+    return output_vectors
 end
