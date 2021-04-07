@@ -1,4 +1,4 @@
-using TeaFiles.Body: ItemIOBlock, _first_position_ge_time, read_columns
+using TeaFiles.Body: ItemIOBlock, _first_position_ge_time, read_columns, read_items
 
 # TODO These tests could be refactored a bit
 
@@ -123,6 +123,33 @@ end
             _test(60, 7)  # Strictly after all times, so point to end of block
             _test(70, 7)
         end
+    end
+
+    @testset "read_items" begin
+        # Write the example to the buffer.
+        metadata = _get_example_metadata()
+
+        expected_times = [10, 20, 30, 40, 50]
+        expected_prices = [12.0, 22.0, 32.0, 42.0, 52.0]
+        expected_volumes = [1, 2, 3, 4, 5]
+
+        expected_items = [
+            Tick(time, price, volume)
+            for (time, price, volume) in zip(
+                expected_times, expected_prices, expected_volumes
+            )
+        ]
+
+        buf = IOBuffer()
+        write(buf, metadata)
+        write(buf, expected_items)
+
+        @test read_items(Tick, buf, metadata) == expected_items
+        @test read_items(Tick, buf, metadata; lower=20) == expected_items[2:end]
+        @test read_items(Tick, buf, metadata; lower=40) == expected_items[4:end]
+        @test read_items(Tick, buf, metadata; lower=10, upper=40) == expected_items[1:3]
+        @test read_items(Tick, buf, metadata; lower=40, upper=41) == expected_items[4:4]
+        @test read_items(Tick, buf, metadata; lower=41, upper=42) == Tick[]
     end
 
     @testset "read_columns" begin

@@ -82,70 +82,15 @@ function _first_position_ge_time(
     return block.item_start + (index - 1) * block.item_size
 end
 
-# """
-# Read items from `io`, returning a vector of instances of the appropriate type.
-
-# We provide the option of reading a specified closed-open time interval of such items.
-
-# # Arguments
-# - `::Type{Item}`: The type `Item` to be read -- should be a bits type.
-# - `io::IO`: The IO instance from which to read.
-
-# # Keywords
-# - `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
-# - `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
-# """
-# function read_items(
-#     ::Type{Item}
-#     io::IO,
-#     metadata::TeaFileMetadata;
-#     lower::Union[Nothing, Time]=nothing,
-#     upper::Union[Nothing, Time]=nothing
-# )::Vector{Item} where {Item, Time <: Real}
-#     # TODO
-#     # TODO
-#     # TODO
-# end
-
-"""
-Read columns from `io`, returning a vector of vectors, one per column.
-
-We provide the option of reading a specified closed-open time interval of such items.
-
-# Arguments
-- `::Type{Item}`: The type `Item` to be read -- should be a bits type.
-- `io::IO`: The IO instance from which to read.
-
-# Keywords
-- `columns::Union[Nothing, AbstractVector{Int64}]=nothing`: If specified,
-    only read columns with the given indices
-- `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
-- `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
-"""
-function read_columns(
+function _get_item_start_and_end(
     io::IO,
-    metadata::TeaFileMetadata;
-    columns::Union{Nothing, AbstractVector{Int64}}=nothing,
-    lower::Union{Nothing, Time}=nothing,
-    upper::Union{Nothing, Time}=nothing
-)::Vector{Vector} where {Time <: Real}
+    metadata::TeaFileMetadata,
+    lower::Union{Nothing, Time},
+    upper::Union{Nothing, Time}
+)::Tuple{Int64, Int64} where {Time <: Real}
     if !isnothing(lower) && !isnothing(upper)
         @argcheck lower < upper
     end
-
-    item_section = get_section(metadata, ItemSection)
-
-    fields = if isnothing(columns)
-        # Default to all indices.
-        item_section.fields
-    else
-        [field for (i, field) in enumerate(item_section.fields) if i in columns]
-    end
-
-    offsets = [field.offset for field in fields]
-    @argcheck sort(offsets) == offsets ArgumentError(
-        "Columns should be requested in the order in which they appear in the file."
-    )
 
     time_block = _get_primary_time_field_block(io, metadata)
 
@@ -172,11 +117,95 @@ function read_columns(
         time_block.item_end
     end
 
+    return item_start, item_end
+end
+
+"""
+Read items from `io`, returning a vector of instances of the appropriate type.
+
+We provide the option of reading a specified closed-open time interval of such items.
+
+# Arguments
+- `::Type{Item}`: The type `Item` to be read -- should be a bits type.
+- `io::IO`: The IO instance from which to read.
+
+# Keywords
+- `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
+- `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
+"""
+function read_items(
+    ::Type{Item},
+    io::IO,
+    metadata::TeaFileMetadata;
+    lower::Union{Nothing, Time}=nothing,
+    upper::Union{Nothing, Time}=nothing
+)::Vector{Item} where {Item, Time <: Real}
+    # Work out where to start and end reading the file
+    item_start, item_end = _get_item_start_and_end(io, metadata, lower, upper)
+    if item_start == item_end
+        # This will happen if the lower and upper bounds return an empty range.
+        return Item[]
+    end
+
+    # Allocate output; we know the number of items that we're about to read ahead of time.
+    item_section = get_section(metadata, ItemSection)
+    num_items, remainder = divrem(item_end - item_start, item_section.item_size)
+    if remainder != 0 error("Got remainder $remainder, should be zero.") end
+    output = Vector{Item}(undef, num_items)
+
+    # TODO We should add a check that `Item` is compatible with item_section.
+
+    seek(io, item_start)
+    GC.@preserve output begin
+        unsafe_read(io, pointer(output), item_end - item_start)
+    end
+
+    return output
+end
+
+"""
+Read columns from `io`, returning a vector of vectors, one per column.
+
+We provide the option of reading a specified closed-open time interval of such items.
+
+# Arguments
+- `::Type{Item}`: The type `Item` to be read -- should be a bits type.
+- `io::IO`: The IO instance from which to read.
+
+# Keywords
+- `columns::Union[Nothing, AbstractVector{Int64}]=nothing`: If specified,
+    only read columns with the given indices
+- `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
+- `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
+"""
+function read_columns(
+    io::IO,
+    metadata::TeaFileMetadata;
+    columns::Union{Nothing, AbstractVector{Int64}}=nothing,
+    lower::Union{Nothing, Time}=nothing,
+    upper::Union{Nothing, Time}=nothing
+)::Vector{Vector} where {Time <: Real}
+    # Work out where to start and end reading the file
+    item_start, item_end = _get_item_start_and_end(io, metadata, lower, upper)
+
+    item_section = get_section(metadata, ItemSection)
+
+    fields = if isnothing(columns)
+        # Default to all indices.
+        item_section.fields
+    else
+        [field for (i, field) in enumerate(item_section.fields) if i in columns]
+    end
+
+    offsets = [field.offset for field in fields]
+    @argcheck sort(offsets) == offsets ArgumentError(
+        "Columns should be requested in the order in which they appear in the file."
+    )
+
     # Allocate outputs; we know the number of items that we're about to read ahead of time.
     num_items, remainder = divrem(item_end - item_start, item_section.item_size)
     if remainder != 0 error("Got remainder $remainder, should be zero.") end
     output_vectors = [Vector{field_type(field)}(undef, num_items) for field in fields]
-
 
     # Read the items.
 
