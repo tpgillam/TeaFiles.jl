@@ -69,8 +69,29 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
         end
     end
 
-    # TODO Verify that all item offsets are strictly increasing and are compatible with the
-    #   field types.
+    if haskey(type_to_section, ItemSection)
+        item_section::ItemSection = type_to_section[ItemSection]
+
+        offsets = [field.offset for field in item_section.fields]
+        # `item_size` takes us to the start of the next item.
+        push!(offsets, item_section.item_size)
+        actual_field_sizes = diff(offsets)
+
+        minimum_field_sizes = [sizeof(field_type(field)) for field in item_section.fields]
+
+        for (i, (actual, minimum)) in enumerate(
+                zip(actual_field_sizes, minimum_field_sizes))
+            # This verifies that all item offsets are strictly increasing, and each field
+            # has at least enough space on disk to store the type.
+            if actual < minimum
+                throw(ArgumentError(
+                    "offsets imply field $i has size $actual, "
+                    * "but it should be at least $minimum"
+                ))
+            end
+        end
+    end
+
     # TODO Verify that item_start is large enough to be after the whole metadata section.
 
     return nothing
