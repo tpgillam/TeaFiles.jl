@@ -29,9 +29,11 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
     end
 
     # We should have at most one section of any type.
+    type_to_section = Dict{Type, AbstractSection}()
     type_to_count = DefaultDict{Type, Int}(0)
     for section in metadata.sections
         type_to_count[typeof(section)] += 1
+        type_to_section[typeof(section)] = section
     end
     for (type, count) in type_to_count
         if count > 1
@@ -41,7 +43,34 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
         end
     end
 
-    # TODO Verify that time field offsets match up to known fields.
+    # At this point we could have zero or one time section.
+    if haskey(type_to_section, TimeSection)
+        # If the time section is present, we will do some tests
+        time_section::TimeSection = type_to_section[TimeSection]
+
+        # We *must* have an item section if we have a time section.
+        if !haskey(type_to_section, ItemSection)
+            throw(ArgumentError("There is a TimeSection, but no ItemSection."))
+        end
+        item_section = type_to_section[ItemSection]
+
+        unclaimed_field_offsets = Set((field.offset for field in item_section.fields))
+        # Verify that time field offsets match up to known fields, and that each field is
+        # referred to exactly once.
+        for time_field_offset in time_section.time_field_offsets
+            if !(time_field_offset in unclaimed_field_offsets)
+                throw(ArgumentError(
+                    "Time field offset $time_field_offset does not match to a field."
+                ))
+            end
+
+            # We have claimed this field.
+            delete!(unclaimed_field_offsets, time_field_offset)
+        end
+    end
+
+    # TODO Verify that all item offsets are strictly increasing and are compatible with the
+    #   field types.
     # TODO Verify that item_start is large enough to be after the whole metadata section.
 
     return nothing
