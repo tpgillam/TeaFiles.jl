@@ -75,9 +75,8 @@ function _replace_section!(
     metadata::TeaFileMetadata,
     section::AbstractSection
 )::TeaFileMetadata
-    # Filter out the old time section, and add on the new one.
-    filter!(x -> !isa(x, typeof(section)), metadata.sections)
-    push!(metadata.sections, section)
+    # Filter out the old section, and replace it with the new one.
+    replace!(x -> isa(x, typeof(section)) ? section : x, metadata.sections)
     return metadata
 end
 

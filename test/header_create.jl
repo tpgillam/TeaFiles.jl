@@ -1,6 +1,6 @@
 using Dates
 
-using TeaFiles.Header: create_metadata
+using TeaFiles.Header: create_metadata, create_metadata_julia_time
 
 @testset "create" begin
     @testset "create_metadata" begin
@@ -29,6 +29,18 @@ using TeaFiles.Header: create_metadata
                 name_values=NameValue[NameValue("decimals", Int32(2))]
             )
             reference_metadata = _get_example_metadata()
+            @test metadata == reference_metadata
+        end
+    end
+
+    @testset "create_metadata_julia_time" begin
+        @testset "example" begin
+            metadata = create_metadata_julia_time(
+                DateTimeTick;
+                content_description="ACME prices",
+                name_values=NameValue[NameValue("decimals", Int32(2))]
+            )
+            reference_metadata = _example_datetime_metadata()
             @test metadata == reference_metadata
         end
     end
