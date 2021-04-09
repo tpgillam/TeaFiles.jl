@@ -54,17 +54,7 @@ function create_metadata(
         TimeSection(epoch, ticks_per_day, time_field_offsets)
     ]
 
-    # We need to determine item_start. We do so automatically by calculating the size of
-    # the metadata on disk, and then rounding up to a multiple of 8 bytes.
-    # Remeber that each section additionally has fields denoting the section type and the
-    # offset of the next section.
-    metadata_size = (
-        sizeof(Int64) * 4  # Top-level metadata
-        + length(sections) * 2 * sizeof(Int32)  # Section metadata
-        + sum(_tea_size, sections)  # Section payloads
-    )
-    item_start = round(Int, metadata_size / 8, RoundUp) * 8
-
+    item_start = minimum_item_start(sections)
     return TeaFileMetadata(item_start, 0, sections)
 end
 

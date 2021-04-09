@@ -94,38 +94,6 @@ function _test_block_search(
     @testset "example" begin _test_impl_example(times, func, time, expected_index) end
 end
 
-struct DateTimeTick
-    time::DateTime
-    price::Float64
-    volume::Int64
-end
-
-function _replace_section!(
-    metadata::TeaFileMetadata,
-    section::AbstractSection
-)::TeaFileMetadata
-    # Filter out the old time section, and add on the new one.
-    filter!(x -> !isa(x, typeof(section)), metadata.sections)
-    push!(metadata.sections, section)
-    return metadata
-end
-
-"""
-This is the same as the example metadata, but we replace the epoch in the time section
-with one that is Julia-compatible.
-"""
-function _example_datetime_metadata()
-    julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
-    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
-
-    metadata = _get_example_metadata()
-
-    # Create a new time section instance with the epoch changed.
-    time_section = @set get_section(metadata, TimeSection).epoch = julia_epoch
-
-    _replace_section!(metadata, time_section)
-end
-
 @testset "read" begin
     @testset "_first_position_ge_time" begin
         @testset "empty" begin
@@ -233,12 +201,12 @@ end
             _replace_section!(metadata, time_section)
 
             buf = IOBuffer()
+            println(metadata)
             write(buf, metadata)
             write(buf, [Tick(10, 12.0, 1)])
 
             @test_throws ArgumentError read_items(DateTimeTick, buf, metadata)
         end
-
     end
 
     @testset "read_columns" begin

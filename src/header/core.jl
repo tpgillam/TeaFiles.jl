@@ -197,11 +197,35 @@ function is_item_compatible(Item::Type, metadata::TeaFileMetadata)::Bool
     return true
 end
 
+"""
+The minimum item_start compatible with the given `metadata`.
+"""
+function minimum_item_start(sections::Vector{AbstractSection})::Int64
+    # We need to determine item_start. We do so automatically by calculating the size of
+    # the metadata on disk, and then rounding up to a multiple of 8 bytes.
+    # Remeber that each section additionally has fields denoting the section type and the
+    # offset of the next section.
+    metadata_size = (
+        sizeof(Int64) * 4  # Top-level metadata
+        + length(sections) * 2 * sizeof(Int32)  # Section metadata
+        + (isempty(sections) ? 0 : sum(_tea_size, sections))  # Section payloads
+    )
+    return round(Int, metadata_size / 8, RoundUp) * 8
+end
+
 """Throw if `metadata` is invalid."""
 function verify_metadata(metadata::TeaFileMetadata)::Nothing
     if metadata.item_start % 8 != 0
         throw(ArgumentError(
             "Invalid item_start: $(metadata.item_start) is not a multiple of 8."
+        ))
+    end
+
+    # Verify that item_start is large enough to be after the whole metadata section.
+    min_item_start = minimum_item_start(metadata.sections)
+    if metadata.item_start < min_item_start
+        throw(ArgumentError(
+            "item_start is too small: $(metadata.item_start) < $min_item_start, "
         ))
     end
 
@@ -274,8 +298,6 @@ function verify_metadata(metadata::TeaFileMetadata)::Nothing
             end
         end
     end
-
-    # TODO Verify that item_start is large enough to be after the whole metadata section.
 
     return nothing
 end

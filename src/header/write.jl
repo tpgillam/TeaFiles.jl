@@ -33,9 +33,9 @@ end
 """
 Get the size of this object in bytes when written.
 """
-_tea_size(x::Real) = sizeof(x)
-_tea_size(x::String) = 4 + sizeof(x)
-_tea_size(x::Base.UUID) = sizeof(x)
+_tea_size(x::Real)::Int32 = sizeof(x)
+_tea_size(x::String)::Int32 = 4 + sizeof(x)
+_tea_size(x::Base.UUID)::Int32 = sizeof(x)
 function _tea_size(x::AbstractSection)::Int32
     # FIXME be less lazy
     out = IOBuffer()

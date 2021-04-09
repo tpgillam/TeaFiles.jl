@@ -1,6 +1,10 @@
+using Dates
+using Setfield
+
 using TeaFiles
-using TeaFiles.Header: ContentDescriptionSection, Field, ItemSection, NameValue,
-    NameValueSection, TeaFileMetadata, TimeSection, field_type, field_type_id
+using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field, ItemSection,
+    NameValue, NameValueSection, TeaFileMetadata, TimeSection, field_type, field_type_id,
+    minimum_item_start
 
 """
 Quick-and-dirty field construction. Note that this doesn't properly deal with field
@@ -59,4 +63,43 @@ struct Tick
     time::Int64
     price::Float64
     volume::Int64
+end
+
+struct DateTimeTick
+    time::DateTime
+    price::Float64
+    volume::Int64
+end
+
+function _replace_section!(
+    metadata::TeaFileMetadata,
+    section::AbstractSection
+)::TeaFileMetadata
+    # Filter out the old time section, and add on the new one.
+    filter!(x -> !isa(x, typeof(section)), metadata.sections)
+    push!(metadata.sections, section)
+    return metadata
+end
+
+"""
+This is the same as the example metadata, but we replace the epoch in the time section
+with one that is Julia-compatible.
+"""
+function _example_datetime_metadata()
+    julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
+    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
+
+    metadata = _get_example_metadata()
+
+    # Create a new time section instance with the epoch changed.
+    time_section = @set get_section(metadata, TimeSection).epoch = julia_epoch
+
+    # Change the name of the item in item section.
+    item_section = @set get_section(metadata, ItemSection).item_name = "DateTimeTick"
+
+    _replace_section!(metadata, time_section)
+    _replace_section!(metadata, item_section)
+
+    # We've changed the sections, so update the location of the item section.
+    return @set metadata.item_start = minimum_item_start(metadata.sections)
 end

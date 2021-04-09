@@ -30,5 +30,4 @@ using TeaFiles.Header: TimeSection, _duration_div, field_type, get_section,
         @test _duration_div(Hour(2), Minute(2)) == 60
         @test_throws ArgumentError _duration_div(Minute(3), Minute(4))
     end
-
 end
