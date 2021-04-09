@@ -1,3 +1,5 @@
+using Dates
+
 using TeaFiles.Body: ItemIOBlock, _first_position_ge_time, read_columns, read_items
 
 # TODO These tests could be refactored a bit
@@ -158,6 +160,27 @@ end
             volume::Int64
         end
         @test_throws ArgumentError read_items(IncompatibleTick, buf, metadata)
+    end
+
+    @testset "read_items_julia_datetime" begin
+        struct DateTimeTick
+            time::DateTime
+            price::Float64
+            volume::Int64
+        end
+
+        @testset "incompatible" begin
+            metadata = _get_example_metadata()
+            items = [Tick(10, 12.0, 1)]
+            buf = IOBuffer()
+            write(buf, metadata)
+            write(buf, items)
+
+            # This should throw an error, because even though the `Tick` class stores times
+            # as an Int64, which is binary compatible with a Julia DateTime, and each tick
+            # is a millisecond, it has a different epoch.
+            @test_throws ArgumentError read_items(DateTimeTick, buf, metadata)
+        end
     end
 
     @testset "read_columns" begin

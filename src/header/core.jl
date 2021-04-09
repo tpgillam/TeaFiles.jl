@@ -1,6 +1,7 @@
 using AutoHashEquals: @auto_hash_equals
 using Bijections: Bijection, inverse
 using DataStructures: DefaultDict
+using Dates
 
 # This is the identifier with which every tea file must start. It is used to ensure that
 # the file is a valid tea-file, and also that the endianness matches.
@@ -119,17 +120,33 @@ end
 """Get the time field which is the primary index for the tea file."""
 get_primary_time_field(metadata::TeaFileMetadata) = first(get_time_fields(metadata))
 
+"""Division that will throw if `y` does not fit into `x` an integer number of times."""
+function _duration_div(x::Dates.FixedPeriod, y::T) where {T <: Dates.FixedPeriod}
+    value, remainder = divrem(convert(T, x).value, y.value)
+    if remainder != 0
+        throw(ArgumentError("$y % $x != 0, division not defined."))
+    end
+    return value
+end
+
 """
 Return true iff the specified `Item` has a compatible memory layout with that specified
 in `item_section`.
 
 Note that we *do not* inspect field names, just types and offsets.
+
+For fields that are of Julia `DateTime` type, we verify that this corresponds to
+    * an Int64 field
+    * a field marked as a "time" field
+    * that the epoch & ticks_per_day match that used in the Julia `DateTime` type.
 """
-function is_item_compatible(Item::Type, item_section::ItemSection)::Bool
+function is_item_compatible(Item::Type, metadata::TeaFileMetadata)::Bool
     if !isbitstype(Item)
         # Only types with a well defined layout in memory can be compatible.
         return false
     end
+
+    item_section::ItemSection = get_section(metadata, ItemSection)
 
     if sizeof(Item) != item_section.item_size
         return false
@@ -139,11 +156,38 @@ function is_item_compatible(Item::Type, item_section::ItemSection)::Bool
         return false
     end
 
+    have_done_time_checks = false
     for i in 1:fieldcount(Item)
         field = item_section.fields[i]
-        if field_type(field) != fieldtype(Item, i)
+        if fieldtype(Item, i) == DateTime
+            # DateTime fields are special, and require more extensive checks to be made
+            # (see the docstring).
+            if field_type(field) != Int64
+                return false
+            end
+
+            if !have_done_time_checks
+                # We now check the epoch and ticks-per-day for compatibility with Julia
+                # date times. Since this is not field-specific, we ensure that we only do
+                # this check once.
+                time_section::TimeSection = get_section(metadata, TimeSection)
+                julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
+                julia_epoch = Day(DateTime(1, 1, 1) - julia_epoch_utc)
+                if time_section.epoch != julia_epoch
+                    return false
+                end
+
+                millisecond_per_day = _duration_div(Day(1), Millisecond(1))
+                if time_section.ticks_per_day != millisecond_per_day
+                    return false
+                end
+                have_done_time_checks = true
+            end
+
+        elseif field_type(field) != fieldtype(Item, i)
             return false
         end
+
         if field.offset != fieldoffset(Item, i)
             return false
         end

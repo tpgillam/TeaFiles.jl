@@ -1,13 +1,4 @@
-using Dates: DateTime, Day, FixedPeriod, Millisecond, TimePeriod
-
-"""Division that will throw if `y` does not fit into `x` an integer number of times."""
-function _duration_div(x::FixedPeriod, y::T) where {T <: FixedPeriod}
-    value, remainder = divrem(convert(T, x).value, y.value)
-    if remainder != 0
-        throw(ArgumentError("$y % $x != 0, division not defined."))
-    end
-    return value
-end
+using Dates
 
 """
 Create metadata given an item type, and other optional information.
@@ -23,7 +14,7 @@ Create metadata given an item type, and other optional information.
 - `name_values::AbstractVector{NameValue}`: Additional name-value pairs to include in the
     metadata.
 - `epoch_utc::DateTime`: The epoch, in UTC. Defaults to midnight 1970-01-01.
-- `tick_duration::FixedPeriod`: The length of one tick of the clock.
+- `tick_duration::Dates.FixedPeriod`: The length of one tick of the clock.
 """
 function create_metadata(
     item_type::Type;
@@ -31,7 +22,7 @@ function create_metadata(
     content_description::AbstractString="",
     name_values::AbstractVector{NameValue}=NameValue[],
     epoch_utc::DateTime=DateTime(1970, 1, 1),
-    tick_duration::FixedPeriod=Millisecond(1)
+    tick_duration::Dates.FixedPeriod=Millisecond(1)
 )::TeaFileMetadata
     if !isbitstype(item_type)
         throw(ArgumentError("$item_type is not a bits type."))
@@ -76,3 +67,18 @@ function create_metadata(
 
     return TeaFileMetadata(item_start, 0, sections)
 end
+
+# """
+# Create metadata that derives whether or not a field represents a time from whether it is
+# a `DateTime`. Such a field will always be encoded as milliseconds since the Julia epoch,
+# as an Int64.
+# """
+# function create_metadata_julia_time(
+#     item_type::Type;
+#     content_description::AbstractString="",
+#     name_values::AbstractVector{NameValue}=NameValue[]
+# )::TeaFileMetadata
+#     # TODO
+#     # TODO
+#     # TODO
+# end
