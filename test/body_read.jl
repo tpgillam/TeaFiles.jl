@@ -201,7 +201,6 @@ end
             _replace_section!(metadata, time_section)
 
             buf = IOBuffer()
-            println(metadata)
             write(buf, metadata)
             write(buf, [Tick(10, 12.0, 1)])
 
