@@ -172,8 +172,9 @@ function is_item_compatible(Item::Type, metadata::TeaFileMetadata)::Bool
                 # this check once.
                 time_section::TimeSection = get_section(metadata, TimeSection)
                 julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
-                julia_epoch = Day(DateTime(1, 1, 1) - julia_epoch_utc)
+                julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
                 if time_section.epoch != julia_epoch
+                    @debug "Epoch wrong: expected $julia_epoch, got $(time_section.epoch)"
                     return false
                 end
 

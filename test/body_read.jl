@@ -1,4 +1,5 @@
 using Dates
+using Setfield: @set
 
 using TeaFiles.Body: ItemIOBlock, _first_position_ge_time, read_columns, read_items
 
@@ -93,6 +94,38 @@ function _test_block_search(
     @testset "example" begin _test_impl_example(times, func, time, expected_index) end
 end
 
+struct DateTimeTick
+    time::DateTime
+    price::Float64
+    volume::Int64
+end
+
+function _replace_section!(
+    metadata::TeaFileMetadata,
+    section::AbstractSection
+)::TeaFileMetadata
+    # Filter out the old time section, and add on the new one.
+    filter!(x -> !isa(x, typeof(section)), metadata.sections)
+    push!(metadata.sections, section)
+    return metadata
+end
+
+"""
+This is the same as the example metadata, but we replace the epoch in the time section
+with one that is Julia-compatible.
+"""
+function _example_datetime_metadata()
+    julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
+    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
+
+    metadata = _get_example_metadata()
+
+    # Create a new time section instance with the epoch changed.
+    time_section = @set get_section(metadata, TimeSection).epoch = julia_epoch
+
+    _replace_section!(metadata, time_section)
+end
+
 @testset "read" begin
     @testset "_first_position_ge_time" begin
         @testset "empty" begin
@@ -163,24 +196,49 @@ end
     end
 
     @testset "read_items_julia_datetime" begin
-        struct DateTimeTick
-            time::DateTime
-            price::Float64
-            volume::Int64
-        end
+        @testset "compatible" begin
+            metadata = _example_datetime_metadata()
 
-        @testset "incompatible" begin
-            metadata = _get_example_metadata()
-            items = [Tick(10, 12.0, 1)]
+            items = [DateTimeTick(DateTime(2000, 1, 1), 12.0, 1)]
             buf = IOBuffer()
             write(buf, metadata)
             write(buf, items)
+            @test read_items(DateTimeTick, buf, metadata) == items
+
+            # We should also be able to write any old integers in a Tick type, then read it
+            # back as a DateTime, so long as the epoch is set correctly.
+            buf = IOBuffer()
+            write(buf, metadata)
+            write(buf, [Tick(0, 12.0, 1)])
+            @test read_items(DateTimeTick, buf, metadata) == [
+                DateTimeTick(DateTime(0, 12, 31), 12.0, 1)
+            ]
+        end
+
+        @testset "incompatible epoch" begin
+            metadata = _get_example_metadata()
+            buf = IOBuffer()
+            write(buf, metadata)
+            write(buf, [Tick(10, 12.0, 1)])
 
             # This should throw an error, because even though the `Tick` class stores times
             # as an Int64, which is binary compatible with a Julia DateTime, and each tick
             # is a millisecond, it has a different epoch.
             @test_throws ArgumentError read_items(DateTimeTick, buf, metadata)
         end
+
+        @testset "incompatible ticks per day" begin
+            metadata = _example_datetime_metadata()
+            time_section = @set get_section(metadata, TimeSection).ticks_per_day = 1
+            _replace_section!(metadata, time_section)
+
+            buf = IOBuffer()
+            write(buf, metadata)
+            write(buf, [Tick(10, 12.0, 1)])
+
+            @test_throws ArgumentError read_items(DateTimeTick, buf, metadata)
+        end
+
     end
 
     @testset "read_columns" begin
