@@ -44,7 +44,7 @@ const _FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
     UInt64 => 8,
     Float32 => 9,
     Float64 => 10,
-    # TODO support for Decimal, 0x200?
+    # We do not support .NET decimals, but this reserves 0x200.
     # User-defined types must have identifiers at or above 0x1000
 ))
 
