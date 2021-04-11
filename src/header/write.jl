@@ -20,8 +20,7 @@ function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
     return bytes_written
 end
 
-# TODO This could just be _write_tea, but for the fact that _tea_size relies on _write_tea
-#   *not* writing the section metadata.
+"""Write a section, including its metadata."""
 function _write_section(io::IO, section::AbstractSection)::Int
     return (
         write(io, section_id(section)) # section_id
@@ -34,12 +33,15 @@ end
 Get the size of this object in bytes when written.
 """
 _tea_size(x::Real)::Int32 = sizeof(x)
-_tea_size(x::String)::Int32 = 4 + sizeof(x)
+_tea_size(x::AbstractString)::Int32 = sizeof(Int32) + sizeof(x)
 _tea_size(x::Base.UUID)::Int32 = sizeof(x)
+_tea_size(x::Vector)::Int32 = sizeof(Int32) + (isempty(x) ? 0 : sum(_tea_size, x))
+_tea_size(x::Field)::Int32 = _tea_size(x.type_id) + _tea_size(x.offset) + _tea_size(x.name)
+_tea_size(x::NameValue)::Int32 = _tea_size(x.name) + _tea_size(kind(x)) + _tea_size(x.value)
+
 function _tea_size(x::AbstractSection)::Int32
-    # FIXME be less lazy
-    out = IOBuffer()
-    return _write_tea(out, x)
+    # For all sections, we just write every field in that section.
+    return sum(_tea_size, (getproperty(x, name) for name in propertynames(x)))
 end
 
 """Write x in the way that a TeaFile expects."""
