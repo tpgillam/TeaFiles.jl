@@ -163,11 +163,5 @@ end
         # We should pad up to the item_start
         @test write(IOBuffer(), example_metadata) == 200
         @test write(IOBuffer(), TeaFileMetadata(1000, 0, [])) == 1000
-
-        # An invalid item_start should trigger an exception.
-        @test_throws ArgumentError write(IOBuffer(), TeaFileMetadata(1001, 0, []))
-
-        # An invalid item_end should trigger an exception.
-        @test_throws ArgumentError write(IOBuffer(), TeaFileMetadata(1000, 1, []))
     end
 end

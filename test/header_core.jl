@@ -30,4 +30,12 @@ using TeaFiles.Header: TimeSection, _duration_div, field_type, get_section,
         @test _duration_div(Hour(2), Minute(2)) == 60
         @test_throws ArgumentError _duration_div(Minute(3), Minute(4))
     end
+
+    @testset "invalid metadata" begin
+        # An invalid item_start.
+        @test_throws ArgumentError TeaFileMetadata(1001, 0, [])
+
+        # An invalid item_end.
+        @test_throws ArgumentError TeaFileMetadata(1000, 1, [])
+    end
 end

@@ -9,10 +9,28 @@ const MAGIC_VALUE = Int64(0x0d0e0a0402080500)
 
 abstract type AbstractSection end
 
-@auto_hash_equals struct TeaFileMetadata
+struct TeaFileMetadata
     item_start::Int64  # Byte-index of the start of the item area.
     item_end::Int64  # Byte-index for the end of the item area, or 0 for EOF.
     sections::Vector{AbstractSection}
+
+    function TeaFileMetadata(item_start, item_end, sections)
+        metadata = new(item_start, item_end, sections)
+        _verify_metadata(metadata)
+        return metadata
+    end
+end
+
+function Base.hash(x::TeaFileMetadata, h::UInt)
+    return hash(x.item_start, hash(x.item_end, hash(x.sections, h)))
+end
+
+function Base.:(==)(a::TeaFileMetadata, b::TeaFileMetadata)
+    return (
+        a.item_start == b.item_start &&
+        a.item_end == b.item_end &&
+        a.sections == b.sections
+    )
 end
 
 const _FIELD_DATA_TYPE_TO_ID = Bijection(Dict{DataType,Int32}(
@@ -214,7 +232,7 @@ function minimum_item_start(sections::Vector{AbstractSection})::Int64
 end
 
 """Throw if `metadata` is invalid."""
-function verify_metadata(metadata::TeaFileMetadata)::Nothing
+function _verify_metadata(metadata::TeaFileMetadata)::Nothing
     if metadata.item_start % 8 != 0
         throw(ArgumentError(
             "Invalid item_start: $(metadata.item_start) is not a multiple of 8."

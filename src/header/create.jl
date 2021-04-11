@@ -22,7 +22,8 @@ function _create_metadata_impl(
     ]
 
     item_start = minimum_item_start(sections)
-    return TeaFileMetadata(item_start, 0, sections)
+    metadata = TeaFileMetadata(item_start, 0, sections)
+    return metadata
 end
 
 """

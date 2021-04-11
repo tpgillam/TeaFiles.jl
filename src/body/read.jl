@@ -26,9 +26,6 @@ function _get_primary_time_field_block(io::IO, metadata::TeaFileMetadata)::ItemI
 
     time_type = field_type(time_field)
 
-    # TODO Check that (item_end - item_start) % item_size == 0?
-    # TODO Check that time_field_offset + sizeof(T) <= item_size
-
     return ItemIOBlock{time_type}(
         io,
         metadata.item_start,

@@ -2,8 +2,6 @@
 Base.write(io::IO, metadata::TeaFileMetadata) = _write_tea(io, metadata)
 
 function _write_tea(io::IO, metadata::TeaFileMetadata)::Int
-    verify_metadata(metadata)
-
     bytes_written = write(io, MAGIC_VALUE)
     bytes_written += write(io, metadata.item_start)
     bytes_written += write(io, metadata.item_end)
