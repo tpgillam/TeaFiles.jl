@@ -22,7 +22,7 @@ struct TeaFileMetadata
 end
 
 function Base.hash(x::TeaFileMetadata, h::UInt)
-    return hash(x.item_start, hash(x.item_end, hash(x.sections, h)))
+    return hash(x.item_start, hash(x.item_end, hash(x.sections, hash(:TeaFileMetadata, h))))
 end
 
 function Base.:(==)(a::TeaFileMetadata, b::TeaFileMetadata)
