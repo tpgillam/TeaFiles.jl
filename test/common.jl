@@ -4,7 +4,7 @@ using Setfield
 using TeaFiles
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field, ItemSection,
     NameValue, NameValueSection, TeaFileMetadata, TimeSection, field_type, field_type_id,
-    minimum_item_start
+    get_section, minimum_item_start
 
 """
 Quick-and-dirty field construction. Note that this doesn't properly deal with field
@@ -84,7 +84,7 @@ end
 This is the same as the example metadata, but we replace the epoch in the time section
 with one that is Julia-compatible.
 """
-function _example_datetime_metadata()
+function _get_example_datetime_metadata()
     julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
     julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
 

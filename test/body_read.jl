@@ -165,7 +165,7 @@ end
 
     @testset "read_items_julia_datetime" begin
         @testset "compatible" begin
-            metadata = _example_datetime_metadata()
+            metadata = _get_example_datetime_metadata()
 
             items = [DateTimeTick(DateTime(2000, 1, 1), 12.0, 1)]
             buf = IOBuffer()
@@ -196,7 +196,7 @@ end
         end
 
         @testset "incompatible ticks per day" begin
-            metadata = _example_datetime_metadata()
+            metadata = _get_example_datetime_metadata()
             time_section = @set get_section(metadata, TimeSection).ticks_per_day = 1
             _replace_section!(metadata, time_section)
 

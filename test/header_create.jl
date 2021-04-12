@@ -40,7 +40,7 @@ using TeaFiles.Header: create_metadata, create_metadata_julia_time
                 content_description="ACME prices",
                 name_values=NameValue[NameValue("decimals", Int32(2))]
             )
-            reference_metadata = _example_datetime_metadata()
+            reference_metadata = _get_example_datetime_metadata()
             @test metadata == reference_metadata
         end
     end
