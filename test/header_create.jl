@@ -1,7 +1,7 @@
 using Dates
 using Setfield
 
-using TeaFiles.Header: create_metadata, create_metadata_julia_time
+using TeaFiles.Header: create_item_namedtuple, create_metadata, create_metadata_julia_time
 
 @testset "create" begin
     @testset "create_metadata" begin
@@ -62,5 +62,25 @@ using TeaFiles.Header: create_metadata, create_metadata_julia_time
             reference_metadata = _get_example_datetime_metadata()
             @test metadata == reference_metadata
         end
+    end
+
+    @testset "create_item_namedtuple" begin
+        metadata = _get_example_metadata()
+        namedtuple = create_item_namedtuple(metadata)
+
+        namedtuple_tick = NamedTuple{
+            (:time, :price, :volume),
+            Tuple{Int64, Float64, Int64}
+        }
+        @test namedtuple == namedtuple_tick
+
+        metadata = _get_example_datetime_metadata()
+        namedtuple = create_item_namedtuple(metadata)
+
+        namedtuple_datetime_tick = NamedTuple{
+            (:time, :price, :volume),
+            Tuple{DateTime, Float64, Int64}
+        }
+        @test namedtuple == namedtuple_datetime_tick
     end
 end

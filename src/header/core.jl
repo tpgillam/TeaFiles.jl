@@ -148,6 +148,26 @@ function _duration_div(x::Dates.FixedPeriod, y::T) where {T <: Dates.FixedPeriod
 end
 
 """
+Return true iff the specfied time section implies that Int64 time fields can safely be cast
+to Julia `DateTime` objects.
+"""
+function is_julia_time_compatible(time_section::TimeSection)::Bool
+    julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
+    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
+    if time_section.epoch != julia_epoch
+        @debug "Epoch wrong: expected $julia_epoch, got $(time_section.epoch)"
+        return false
+    end
+
+    millisecond_per_day = _duration_div(Day(1), Millisecond(1))
+    if time_section.ticks_per_day != millisecond_per_day
+        return false
+    end
+
+    return true
+end
+
+"""
 Return true iff the specified `Item` has a compatible memory layout with that specified
 in `item_section`.
 
@@ -189,15 +209,7 @@ function is_item_compatible(Item::Type, metadata::TeaFileMetadata)::Bool
                 # date times. Since this is not field-specific, we ensure that we only do
                 # this check once.
                 time_section::TimeSection = get_section(metadata, TimeSection)
-                julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
-                julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
-                if time_section.epoch != julia_epoch
-                    @debug "Epoch wrong: expected $julia_epoch, got $(time_section.epoch)"
-                    return false
-                end
-
-                millisecond_per_day = _duration_div(Day(1), Millisecond(1))
-                if time_section.ticks_per_day != millisecond_per_day
+                if !is_julia_time_compatible(time_section)
                     return false
                 end
                 have_done_time_checks = true

@@ -112,3 +112,41 @@ function create_metadata_julia_time(
         content_description, name_values, epoch_utc, tick_duration
     )
 end
+
+"""
+Create a `NamedTuple` type that is compatible with the specified metadata.
+
+This may not be possible, due to field offsets, in which case we throw.
+"""
+function create_item_namedtuple(metadata::TeaFileMetadata)::Type{<:NamedTuple}
+    time_section = get_section(metadata, TimeSection)
+    # Create DateTime fields if we know they are binary compatible, otherwise don't do
+    # anything special with time fields.
+    create_datetime_fields = is_julia_time_compatible(time_section)
+
+    item_section = get_section(metadata, ItemSection)
+
+    field_names = Symbol[]
+    field_types = Type[]
+
+    for field in item_section.fields
+        push!(field_names, Symbol(field.name))
+        field_type_ = field_type(field)
+        if create_datetime_fields && field_type_ == Int64
+            if field.offset in time_section.time_field_offsets
+                field_type_ = DateTime
+            end
+        end
+        push!(field_types, field_type_)
+    end
+
+    candidate = NamedTuple{tuple(field_names...), Tuple{field_types...}}
+
+    if !is_item_compatible(candidate, metadata)
+        throw(ArgumentError(
+            "Unable to create compatible NamedTuple; probably due to field offsets"
+        ))
+    end
+
+    return candidate
+end
