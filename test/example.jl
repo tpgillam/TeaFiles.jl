@@ -12,7 +12,7 @@ function _read_all_items_mmap(
     seek(io, metadata.item_start)
     map = Mmap.mmap(io)
 
-    num_items = get_num_items(sizeof(map), metadata)
+    num_items = TeaFiles.Body.get_num_items(sizeof(map), metadata)
 
     # Output buffer for the items that we're going to read.
     item_vector = Vector{T}(undef, num_items)
@@ -28,7 +28,7 @@ function _read_all_items_syscall(
     metadata::TeaFileMetadata
 )::Vector{T} where T
     seek(io, metadata.item_start)
-    num_items = get_num_items(io, metadata)
+    num_items = TeaFiles.Body.get_num_items(io, metadata)
     # In practice one may want to define "read" for type T
     item_vector = Vector{T}(undef, num_items)
     unsafe_read(io, Ref(item_vector, 1), sizeof(T) * num_items)
