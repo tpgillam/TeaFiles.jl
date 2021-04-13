@@ -1,4 +1,5 @@
 using Dates
+using Setfield
 
 using TeaFiles.Header: create_metadata, create_metadata_julia_time
 
@@ -29,6 +30,24 @@ using TeaFiles.Header: create_metadata, create_metadata_julia_time
                 name_values=NameValue[NameValue("decimals", Int32(2))]
             )
             reference_metadata = _get_example_metadata()
+            @test metadata == reference_metadata
+        end
+
+        @testset "example namedtuple" begin
+            namedtuple_tick = NamedTuple{
+                (:time, :price, :volume),
+                Tuple{Int64, Float64, Int64}
+            }
+            metadata = create_metadata(
+                namedtuple_tick;
+                time_fields=[:time],
+                content_description="ACME prices",
+                name_values=NameValue[NameValue("decimals", Int32(2))]
+            )
+            reference_metadata = _get_example_metadata()
+            item_section = get_section(reference_metadata, ItemSection)
+            item_section = @set item_section.item_name = "NamedTuple"
+            _replace_section!(reference_metadata, item_section)
             @test metadata == reference_metadata
         end
     end
