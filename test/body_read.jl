@@ -94,6 +94,15 @@ function _test_block_search(
     @testset "example" begin _test_impl_example(times, func, time, expected_index) end
 end
 
+"""
+Convert a vector of some struct T to a vector of equivalent namedtuples.
+"""
+function _structs_to_namedtuples(x::AbstractVector{T}) where {T}
+    out_type = NamedTuple{tuple(fieldnames(T)...), Tuple{fieldtypes(T)...}}
+    # Not the fastest, but oh well.
+    return reinterpret(out_type, x)
+end
+
 @testset "read" begin
     @testset "_first_position_ge_time" begin
         @testset "empty" begin
@@ -205,6 +214,18 @@ end
             write(buf, [Tick(10, 12.0, 1)])
 
             @test_throws ArgumentError read_items(DateTimeTick, buf, metadata)
+        end
+    end
+
+    @testset "read_items_namedtuple" begin
+        @testset "compatible" begin
+            metadata = _get_example_datetime_metadata()
+
+            items = [DateTimeTick(DateTime(2000, 1, 1), 12.0, 1)]
+            buf = IOBuffer()
+            write(buf, metadata)
+            write(buf, items)
+            @test read_items(buf, metadata) == _structs_to_namedtuples(items)
         end
     end
 

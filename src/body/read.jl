@@ -1,6 +1,6 @@
 using ArgCheck
 
-using TeaFiles.Header: ItemSection, TeaFileMetadata, field_type,
+using TeaFiles.Header: ItemSection, TeaFileMetadata, create_item_namedtuple, field_type,
     get_primary_time_field, get_section, is_item_compatible
 
 """Wrapper around an IO block, on which indexing gets a particular field."""
@@ -118,7 +118,13 @@ function _get_item_start_and_end(
 end
 
 """
+    read_items(::Type{Item}, io, metadata; lower=nothing, upper=nothing)
+    read_items(io, metadata; lower=nothing, upper=nothing)
+
 Read items from `io`, returning a vector of instances of the appropriate type.
+
+The second form of this function will attempt to form a NamedTuple that conforms to the
+metadata, and read instances appropriately.
 
 We provide the option of reading a specified closed-open time interval of such items.
 
@@ -157,6 +163,16 @@ function read_items(
     end
 
     return output
+end
+
+function read_items(
+    io::IO,
+    metadata::TeaFileMetadata;
+    lower::Union{Nothing, Time}=nothing,
+    upper::Union{Nothing, Time}=nothing
+)::Vector{<:NamedTuple} where {Time <: Real}
+    item_type = create_item_namedtuple(metadata)
+    return read_items(item_type, io, metadata; lower=lower, upper=upper)
 end
 
 """
