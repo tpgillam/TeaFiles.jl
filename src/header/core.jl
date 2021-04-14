@@ -70,7 +70,7 @@ const _NAME_VALUE_TYPE_TO_KIND = Bijection(Dict{DataType, Int32}(
     Base.UUID => 4,
 ))
 
-kind(::NameValue{T}) where T = _NAME_VALUE_TYPE_TO_KIND[T]
+kind(::NameValue{T}) where {T} = _NAME_VALUE_TYPE_TO_KIND[T]
 name_value_type(kind::Int32) = inverse(_NAME_VALUE_TYPE_TO_KIND, kind)
 
 @auto_hash_equals struct ItemSection <: AbstractSection
