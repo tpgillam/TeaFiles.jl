@@ -10,15 +10,11 @@ function _create_metadata_impl(
     epoch_utc::DateTime,
     tick_duration::Dates.FixedPeriod
 )::TeaFileMetadata
-    # Number of days since the epoch, as an Int64.
-    epoch = Day(epoch_utc - DateTime(1, 1, 1)).value
-    ticks_per_day = _duration_div(Day(1), tick_duration)
-
     sections = [
         ItemSection(item_size, item_name, fields),
         ContentDescriptionSection(content_description),
         NameValueSection(name_values),
-        TimeSection(epoch, ticks_per_day, time_field_offsets)
+        TimeSection(tea_epoch(epoch_utc), ticks_per_day(tick_duration), time_field_offsets)
     ]
 
     item_start = minimum_item_start(sections)

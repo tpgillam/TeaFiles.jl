@@ -139,7 +139,8 @@ end
 get_primary_time_field(metadata::TeaFileMetadata) = first(get_time_fields(metadata))
 
 """Division that will throw if `y` does not fit into `x` an integer number of times."""
-function _duration_div(x::Dates.FixedPeriod, y::T) where {T <: Dates.FixedPeriod}
+function _duration_div(x::Dates.FixedPeriod, y::T)::Int where {T <: Dates.FixedPeriod}
+    # TODO use Dates.divexact?
     value, remainder = divrem(convert(T, x).value, y.value)
     if remainder != 0
         throw(ArgumentError("$y % $x != 0, division not defined."))
@@ -148,19 +149,30 @@ function _duration_div(x::Dates.FixedPeriod, y::T) where {T <: Dates.FixedPeriod
 end
 
 """
+Get an epoch in Tea-format given it specified as a datetime.
+
+This is the number of days since 0001-01-01 as an Int64.
+"""
+tea_epoch(epoch::DateTime)::Int64 = Day(epoch - DateTime(1, 1, 1)).value
+
+"""
+Given a tick duration, convert it to an (integer) number of ticks per day.
+"""
+function ticks_per_day(tick_duration::Dates.FixedPeriod)::Int64
+    return _duration_div(Day(1), tick_duration)
+end
+
+"""
 Return true iff the specfied time section implies that Int64 time fields can safely be cast
 to Julia `DateTime` objects.
 """
 function is_julia_time_compatible(time_section::TimeSection)::Bool
     julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
-    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
-    if time_section.epoch != julia_epoch
+    if time_section.epoch != tea_epoch(julia_epoch_utc)
         @debug "Epoch wrong: expected $julia_epoch, got $(time_section.epoch)"
         return false
     end
-
-    millisecond_per_day = _duration_div(Day(1), Millisecond(1))
-    if time_section.ticks_per_day != millisecond_per_day
+    if time_section.ticks_per_day != ticks_per_day(Millisecond(1))
         return false
     end
 

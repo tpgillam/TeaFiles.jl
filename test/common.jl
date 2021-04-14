@@ -4,7 +4,7 @@ using Setfield
 using TeaFiles
 using TeaFiles.Header: AbstractSection, ContentDescriptionSection, Field, ItemSection,
     NameValue, NameValueSection, TeaFileMetadata, TimeSection, field_type, field_type_id,
-    get_section, minimum_item_start
+    get_section, minimum_item_start, tea_epoch
 
 """
 Quick-and-dirty field construction. Note that this doesn't properly deal with field
@@ -86,7 +86,7 @@ with one that is Julia-compatible.
 """
 function _get_example_datetime_metadata()
     julia_epoch_utc = DateTime(0, 1, 1) - Millisecond(Dates.DATETIMEEPOCH)
-    julia_epoch = Day(julia_epoch_utc - DateTime(1, 1, 1)).value
+    julia_epoch = tea_epoch(julia_epoch_utc)
 
     metadata = _get_example_metadata()
 
