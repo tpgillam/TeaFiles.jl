@@ -11,8 +11,6 @@ module Body
 include("body/read.jl")
 end  # Body
 
-using .Header: TeaFileMetadata
-
-export TeaFileMetadata
+include("api.jl")
 
 end  # TeaFiles

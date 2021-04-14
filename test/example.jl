@@ -6,7 +6,7 @@ using TeaFiles
 function _read_all_items_mmap(
     ::Type{T},
     io::IOStream,
-    metadata::TeaFileMetadata
+    metadata::TeaFiles.Header.TeaFileMetadata
 )::Vector{T} where T
     # Memory map the file from the start of the item section
     seek(io, metadata.item_start)
@@ -25,7 +25,7 @@ end
 function _read_all_items_syscall(
     ::Type{T},
     io::IOStream,
-    metadata::TeaFileMetadata
+    metadata::TeaFiles.Header.TeaFileMetadata
 )::Vector{T} where T
     seek(io, metadata.item_start)
     num_items = TeaFiles.Body.get_num_items(io, metadata)
@@ -50,7 +50,7 @@ function _test_write_read(data::Vector{T}; metadata_kwargs...) where T
 
     result_mmap, result_syscall = open(path; read=true) do io
         # Read the file.
-        read_metadata = read(io, TeaFileMetadata)
+        read_metadata = read(io, TeaFiles.Header.TeaFileMetadata)
         @test read_metadata == metadata
 
         result_mmap = _read_all_items_mmap(Item, io, metadata)
