@@ -94,15 +94,6 @@ function _test_block_search(
     @testset "example" begin _test_impl_example(times, func, time, expected_index) end
 end
 
-"""
-Convert a vector of some struct T to a vector of equivalent namedtuples.
-"""
-function _structs_to_namedtuples(x::AbstractVector{T}) where {T}
-    out_type = NamedTuple{tuple(fieldnames(T)...), Tuple{fieldtypes(T)...}}
-    # Not the fastest, but oh well.
-    return reinterpret(out_type, x)
-end
-
 @testset "read" begin
     @testset "_first_position_ge_time" begin
         @testset "empty" begin
