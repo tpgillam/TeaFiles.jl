@@ -113,6 +113,8 @@ function create_metadata_julia_time(
     )
 end
 
+# TODO Make this NOT fail if the field offsets don't match; we can test that separately
+# depending on how we are going to use it.
 """
 Create a `NamedTuple` type that is compatible with the specified metadata.
 
