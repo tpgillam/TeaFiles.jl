@@ -1,5 +1,10 @@
 module TeaFiles
 
+using Dates
+
+# Times in TeaFiles can either be a Julia DateTime or just a real number.
+TimeLike = Union{Real, DateTime}
+
 module Header
 include("header/core.jl")
 include("header/read.jl")

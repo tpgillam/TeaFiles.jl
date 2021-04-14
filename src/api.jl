@@ -1,8 +1,5 @@
 using Dates
 
-# TODO This should live in TeaFiles.Body. Also read_items needs to support DateTimes!
-TimeLike = Union{Real, DateTime}
-
 function read(
     source::IO;
     lower::Union{Nothing, TimeLike}=nothing,
