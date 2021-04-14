@@ -1,4 +1,5 @@
 using ArgCheck
+using Mmap
 
 using TeaFiles.Header: ItemSection, TeaFileMetadata, create_item_namedtuple, field_type,
     get_primary_time_field, get_section, is_item_compatible
@@ -74,7 +75,7 @@ after all items present.
 function _first_position_ge_time(
     block::ItemIOBlock{Time},
     time::Time
-)::Int64 where Time <: Real
+)::Int64 where {Time <: Real}
     index = searchsortedfirst(block, time)
     return block.item_start + (index - 1) * block.item_size
 end
@@ -87,6 +88,12 @@ function _get_item_start_and_end(
 )::Tuple{Int64, Int64} where {Time <: Real}
     if !isnothing(lower) && !isnothing(upper)
         @argcheck lower < upper
+    elseif isnothing(lower) && isnothing(upper)
+        # Fast path; we don't need to look at the time block.
+        return (
+            metadata.item_start,
+            metadata.item_end == 0 ? _filesize(io) : metadata.item_end
+        )
     end
 
     time_block = _get_primary_time_field_block(io, metadata)
@@ -155,14 +162,41 @@ function read_items(
     item_section = get_section(metadata, ItemSection)
     num_items, remainder = divrem(item_end - item_start, item_section.item_size)
     if remainder != 0 error("Got remainder $remainder, should be zero.") end
-    output = Vector{Item}(undef, num_items)
 
+    output = Vector{Item}(undef, num_items)
     seek(io, item_start)
+    _read_mappable_items!(output, io, item_end - item_start)
+    return output
+end
+
+"""
+Read items, dispatched on the type of IO, so that we memory-map when possible.
+
+This assumes that we can directly interpret bytes in `io` as `Item` instances.
+"""
+function _read_mappable_items!(output::Vector{Item}, io::IO, num_bytes::Int64) where {Item}
     GC.@preserve output begin
-        unsafe_read(io, pointer(output), item_end - item_start)
+        unsafe_read(io, pointer(output), num_bytes)
+    end
+    return nothing
+end
+
+function _read_mappable_items!(
+    output::Vector{Item},
+    io::IOStream,
+    num_bytes::Int64
+) where {Item}
+    map = Mmap.mmap(io)
+
+    # Profiling suggests that this is the most performant way to load the data (and faster
+    # than reinterpret in Julia 1.6)
+    GC.@preserve output map begin
+        p_source = convert(Ptr{UInt8}, pointer(map))
+        p_dest = convert(Ptr{UInt8}, pointer(output))
+        unsafe_copyto!(p_dest, p_source, num_bytes)
     end
 
-    return output
+    return nothing
 end
 
 function read_items(
