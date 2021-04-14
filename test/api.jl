@@ -1,13 +1,17 @@
 using TeaFiles
 
-function _test_api(data::Vector{T}; metadata_kwargs...) where T
+function _test_api(
+    data::Vector{T},
+    lower::Union{Nothing, TeaFiles.TimeLike},
+    upper::Union{Nothing, TeaFiles.TimeLike}
+) where T
     # Temporary file to use for experiments. We have to use a file to test memory mapping,
     # since this can't be used with a buffer.
     path = tempname()
 
     # TODO Switch to official writing API when available.
     # TODO Also test writing items with different field offsets.
-    metadata = create_metadata_julia_time(T; metadata_kwargs...)
+    metadata = create_metadata_julia_time(T)
 
     # Write the data to a file, as well as an in-memory buffer.
     open(path; write=true) do io
@@ -21,10 +25,30 @@ function _test_api(data::Vector{T}; metadata_kwargs...) where T
     write(buffer, data)
     seekstart(buffer)
 
-    result_file = TeaFiles.read(path)
-    result_buffer = TeaFiles.read(buffer)
+    result_file = TeaFiles.read(path; lower=lower, upper=upper)
+    result_buffer = TeaFiles.read(buffer; lower=lower, upper=upper)
 
-    namedtuple_data = _structs_to_namedtuples(data)
+    # Filter data by time field.
+    expected_read_data = data
+    i_time_field = nothing
+    for i in 1:fieldcount(eltype(data))
+        if fieldtype(eltype(data), i) == DateTime
+            i_time_field = i
+            break
+        end
+    end
+    if !isnothing(lower)
+        expected_read_data = [
+            x for x in expected_read_data if getfield(x, i_time_field) >= lower
+        ]
+end
+    if !isnothing(upper)
+        expected_read_data = [
+            x for x in expected_read_data if getfield(x, i_time_field) < upper
+        ]
+    end
+
+    namedtuple_data = _structs_to_namedtuples(expected_read_data)
     @test result_file == namedtuple_data
     @test result_buffer == namedtuple_data
 
@@ -35,17 +59,8 @@ function _test_api(data::Vector{T}; metadata_kwargs...) where T
 end
 
 @testset "simple" begin
-    struct Item
-        time::Int64
-        a::Int32
-        b::Float64
-    end
-
-    some_data = [
-        Item(1000 + i, i, 2 * i)
-        for i in 1:100
-    ]
-    _test_api(some_data)
+    some_data = [Tick(1000 + i, i, 2 * i) for i in 1:100]
+    _test_api(some_data, nothing, nothing)
 end
 
 @testset "simple datetime" begin
@@ -53,5 +68,10 @@ end
         DateTimeTick(DateTime(2000, 1, 1) + Day(i), 2 * i, 3 * i)
         for i in 1:100
     ]
-    _test_api(some_data)
+    _test_api(some_data, nothing, nothing)
+    _test_api(some_data, DateTime(1990, 1, 1), nothing)
+    _test_api(some_data, DateTime(2000, 1, 1), nothing)
+    _test_api(some_data, DateTime(2000, 3, 1), nothing)
+    _test_api(some_data, DateTime(2000, 3, 1), DateTime(2100, 1, 1))
+    _test_api(some_data, DateTime(2000, 3, 1), DateTime(2000, 4, 1))
 end

@@ -1,8 +1,11 @@
 using ArgCheck
+using Dates
 using Mmap
 
-using TeaFiles.Header: ItemSection, TeaFileMetadata, create_item_namedtuple, field_type,
-    get_primary_time_field, get_section, is_item_compatible
+using TeaFiles: TimeLike
+using TeaFiles.Header: ItemSection, TeaFileMetadata, TimeSection, _duration_div,
+    create_item_namedtuple, field_type, get_primary_time_field, get_section,
+    is_item_compatible
 
 """Wrapper around an IO block, on which indexing gets a particular field."""
 mutable struct ItemIOBlock{T <: Real} <: AbstractVector{T}
@@ -80,12 +83,38 @@ function _first_position_ge_time(
     return block.item_start + (index - 1) * block.item_size
 end
 
+"""
+Convert the given time to a real number compatible with the given time section.
+
+For Julia `DateTime` objects this can fail if we have a disgusting time section.
+"""
+_time_to_real(time::Nothing, ::TimeSection) = time
+_time_to_real(time::Real, ::TimeSection) = time
+function _time_to_real(time::DateTime, time_section::TimeSection)::Int64
+    epoch_datetime = DateTime(1, 1, 1) + Day(time_section.epoch)
+    tick_duration = (1 |> Day |> Nanosecond) / time_section.ticks_per_day
+    # Coarsen the denominator as much as possible. Otherwise we might get an overflow when
+    # we need not.
+    # TODO This should really occur inside _duration_div.
+    while true
+        coarser_type, factor = Dates.coarserperiod(typeof(tick_duration))
+        coarser_value, remainder = divrem(tick_duration.value, factor)
+        if remainder != 0
+            break
+        else
+            tick_duration = coarser_type(coarser_value)
+        end
+    end
+    interval = time - epoch_datetime
+    return _duration_div(interval, tick_duration)
+end
+
 function _get_item_start_and_end(
     io::IO,
     metadata::TeaFileMetadata,
     lower::Union{Nothing, Time},
     upper::Union{Nothing, Time}
-)::Tuple{Int64, Int64} where {Time <: Real}
+)::Tuple{Int64, Int64} where {Time <: TimeLike}
     if !isnothing(lower) && !isnothing(upper)
         @argcheck lower < upper
     elseif isnothing(lower) && isnothing(upper)
@@ -97,6 +126,11 @@ function _get_item_start_and_end(
     end
 
     time_block = _get_primary_time_field_block(io, metadata)
+
+    # Ensure that bounds are converted to a number, if they're a Julia DateTime.
+    time_section = get_section(metadata, TimeSection)
+    lower = _time_to_real(lower, time_section)
+    upper = _time_to_real(upper, time_section)
 
     # Where we should start reading the file.
     item_start = if !isnothing(lower)
@@ -140,8 +174,8 @@ We provide the option of reading a specified closed-open time interval of such i
 - `io::IO`: The IO instance from which to read.
 
 # Keywords
-- `lower::Union[Nothing, Time]=nothing`: If specified, only include times >= `lower`.
-- `upper::Union[Nothing, Time]=nothing`: If specified, only include times < `upper`.
+- `lower::Union{Nothing, Time}=nothing`: If specified, only include times >= `lower`.
+- `upper::Union{Nothing, Time}=nothing`: If specified, only include times < `upper`.
 """
 function read_items(
     ::Type{Item},
@@ -149,7 +183,7 @@ function read_items(
     metadata::TeaFileMetadata;
     lower::Union{Nothing, Time}=nothing,
     upper::Union{Nothing, Time}=nothing
-)::Vector{Item} where {Item, Time <: Real}
+)::Vector{Item} where {Item, Time <: TimeLike}
     # Work out where to start and end reading the file
     item_start, item_end = _get_item_start_and_end(io, metadata, lower, upper)
     if item_start == item_end
@@ -204,7 +238,7 @@ function read_items(
     metadata::TeaFileMetadata;
     lower::Union{Nothing, Time}=nothing,
     upper::Union{Nothing, Time}=nothing
-)::Vector{<:NamedTuple} where {Time <: Real}
+)::Vector{<:NamedTuple} where {Time <: TimeLike}
     item_type = create_item_namedtuple(metadata)
     return read_items(item_type, io, metadata; lower=lower, upper=upper)
 end
@@ -230,7 +264,7 @@ function read_columns(
     columns::Union{Nothing, AbstractVector{Int64}}=nothing,
     lower::Union{Nothing, Time}=nothing,
     upper::Union{Nothing, Time}=nothing
-)::Vector{Vector} where {Time <: Real}
+)::Vector{Vector} where {Time <: TimeLike}
     # Work out where to start and end reading the file
     item_start, item_end = _get_item_start_and_end(io, metadata, lower, upper)
 
