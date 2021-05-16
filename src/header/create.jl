@@ -78,6 +78,7 @@ as an Int64.
 """
 function create_metadata_julia_time(
     item_type::Type;
+    item_type_name::Union{Nothing, AbstractString}=nothing,
     content_description::AbstractString="",
     name_values::AbstractVector{NameValue}=NameValue[]
 )::TeaFileMetadata
@@ -103,8 +104,15 @@ function create_metadata_julia_time(
         push!(fields, Field(field_type_id(T), offset, string(fieldname(item_type, i))))
     end
 
+    # Use the name of the type specified if an item type name is not given.
+    item_type_name = if isnothing(item_type_name)
+        string(item_type.name.name)
+    else
+        item_type_name
+    end
+
     return _create_metadata_impl(
-        Int32(sizeof(item_type)), string(item_type.name.name), fields, time_field_offsets,
+        Int32(sizeof(item_type)), item_type_name, fields, time_field_offsets,
         content_description, name_values, epoch_utc, tick_duration
     )
 end

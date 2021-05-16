@@ -9,23 +9,28 @@ function _test_api(
     # since this can't be used with a buffer.
     path = tempname()
 
-    # TODO Switch to official writing API when available.
     # TODO Also test writing items with different field offsets.
+    # Write the data to a file by hand.
     metadata = create_metadata_julia_time(T)
-
-    # Write the data to a file, as well as an in-memory buffer.
     open(path; write=true) do io
         # Create the file and write the header and data to it.
         write(io, metadata)
         write(io, data)
     end
 
+    # Write to a file with the table API
+    path_table_api = tempname()
+    table = _structs_to_namedtuples(data)
+    TeaFiles.write(path_table_api, table)
+
+    # Write to a buffer.
     buffer = IOBuffer()
     write(buffer, metadata)
     write(buffer, data)
     seekstart(buffer)
 
     result_file = TeaFiles.read(path; lower=lower, upper=upper)
+    result_file_table_api = TeaFiles.read(path_table_api; lower=lower, upper=upper)
     result_buffer = TeaFiles.read(buffer; lower=lower, upper=upper)
 
     # Filter data by time field.
@@ -41,7 +46,7 @@ function _test_api(
         expected_read_data = [
             x for x in expected_read_data if getfield(x, i_time_field) >= lower
         ]
-end
+    end
     if !isnothing(upper)
         expected_read_data = [
             x for x in expected_read_data if getfield(x, i_time_field) < upper
@@ -50,6 +55,7 @@ end
 
     namedtuple_data = _structs_to_namedtuples(expected_read_data)
     @test result_file == namedtuple_data
+    @test result_file_table_api == namedtuple_data
     @test result_buffer == namedtuple_data
 
     # Necessary to remove any remnants of the memory mapping on windows, at least. Otherwise
