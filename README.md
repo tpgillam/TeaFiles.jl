@@ -6,11 +6,13 @@
 [![Coverage](https://codecov.io/gh/tpgillam/TeaFiles.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/tpgillam/TeaFiles.jl)
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
 
-Implement the [TeaFile format](http://discretelogics.com/resources/teafilespec/) for binary timeseries data.
+Implement the [TeaFile](http://discretelogics.com/resources/teafilespec/) format.
+It is row-oriented, binary, and primarily intended for time-series data.
+
+The primary API is compatible with the [Tables.jl](https://github.com/JuliaData/Tables.jl) interface.
 
 ## Example
 
-The standard API works with objects that implement the [Tables](https://github.com/JuliaData/Tables.jl) interface.
 We create the following toy dataset:
 
 ```julia
