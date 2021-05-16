@@ -74,6 +74,7 @@ function write(
     row_iterator = Tables.namedtupleiterator(table)
 
     # Perform writing
+    # TODO check item ordering if there is at least one time column.
     open(destination; write=true) do io
         Base.write(io, metadata)
         for row in row_iterator
