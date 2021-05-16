@@ -123,7 +123,7 @@ function get_time_fields(metadata::TeaFileMetadata)::Vector{Field}
     field, iter_field_state = iterate(item_section.fields)
     for time_field_offset in time_section.time_field_offsets
         while time_field_offset > field.offset
-            field, field_state = iterate(item_section.fields, iter_field_state)
+            field, iter_field_state = iterate(item_section.fields, iter_field_state)
         end
         if field.offset != time_field_offset
             throw(ArgumentError("Inconsistent metadata; could not find time field."))
